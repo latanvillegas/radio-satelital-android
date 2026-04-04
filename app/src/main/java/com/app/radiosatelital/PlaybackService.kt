@@ -8,13 +8,54 @@ import androidx.media3.common.C
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import androidx.media3.session.SessionCommands
 
 class PlaybackService : MediaSessionService() {
 
     private var mediaSession: MediaSession? = null
     private lateinit var player: ExoPlayer
+    private val mediaSessionCallback = object : MediaSession.Callback {
+        override fun onConnect(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+        ): MediaSession.ConnectionResult {
+            Log.i(TAG_SERVICE, "onConnect(): anunciando comandos previous/next/play/stop")
+            val playerCommands = MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS
+                .buildUpon()
+                .add(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
+                .add(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
+                .add(Player.COMMAND_PLAY_PAUSE)
+                .add(Player.COMMAND_STOP)
+                .build()
+
+            val customLayout = listOf(
+                CommandButton.Builder()
+                    .setDisplayName("Anterior")
+                    .setPlayerCommand(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
+                    .setIconResId(android.R.drawable.ic_media_previous)
+                    .build(),
+                CommandButton.Builder()
+                    .setDisplayName("Siguiente")
+                    .setPlayerCommand(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
+                    .setIconResId(android.R.drawable.ic_media_next)
+                    .build(),
+                CommandButton.Builder()
+                    .setDisplayName("Detener")
+                    .setPlayerCommand(Player.COMMAND_STOP)
+                    .setIconResId(android.R.drawable.ic_menu_close_clear_cancel)
+                    .build(),
+            )
+
+            return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+                .setAvailableSessionCommands(SessionCommands.EMPTY)
+                .setAvailablePlayerCommands(playerCommands)
+                .setCustomLayout(customLayout)
+                .build()
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -55,6 +96,7 @@ class PlaybackService : MediaSessionService() {
         mediaSession = MediaSession.Builder(this, player)
             .setId(SESSION_ID)
             .setSessionActivity(sessionActivity)
+            .setCallback(mediaSessionCallback)
             .build()
         Log.i(TAG_SERVICE, "onCreate(): MediaSession creada")
     }
