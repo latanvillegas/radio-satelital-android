@@ -22,9 +22,12 @@ class PlaybackService : MediaSessionService() {
             session: MediaSession,
             controller: MediaSession.ControllerInfo,
         ): MediaSession.ConnectionResult {
-            Log.i(TAG_SERVICE, "onConnect(): anunciando comandos previous/next/play/stop")
-            val playerCommands = MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS
-                .buildUpon()
+            Log.i(
+                TAG_SERVICE,
+                "onConnect(): pkg=${controller.packageName} anunciando comandos completos + previous/next/play/stop",
+            )
+            val playerCommands = Player.Commands.Builder()
+                .addAllCommands()
                 .add(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
                 .add(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
                 .add(Player.COMMAND_PLAY_PAUSE)
@@ -50,10 +53,18 @@ class PlaybackService : MediaSessionService() {
             )
 
             return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
-                .setAvailableSessionCommands(SessionCommands.EMPTY)
+                .setAvailableSessionCommands(MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS)
                 .setAvailablePlayerCommands(playerCommands)
                 .setCustomLayout(customLayout)
                 .build()
+        }
+
+        override fun onPostConnect(session: MediaSession, controller: MediaSession.ControllerInfo) {
+            Log.i(TAG_SERVICE, "onPostConnect(): controller conectado pkg=${controller.packageName}")
+        }
+
+        override fun onDisconnected(session: MediaSession, controller: MediaSession.ControllerInfo) {
+            Log.i(TAG_SERVICE, "onDisconnected(): controller desconectado pkg=${controller.packageName}")
         }
     }
 
@@ -72,12 +83,23 @@ class PlaybackService : MediaSessionService() {
             setHandleAudioBecomingNoisy(true)
             addListener(
                 object : Player.Listener {
+                    override fun onPlaybackStateChanged(playbackState: Int) {
+                        Log.i(
+                            TAG_SERVICE,
+                            "player.onPlaybackStateChanged=$playbackState mediaId=${player.currentMediaItem?.mediaId} uri=${player.currentMediaItem?.localConfiguration?.uri}",
+                        )
+                    }
+
                     override fun onIsPlayingChanged(isPlaying: Boolean) {
                         Log.i(TAG_SERVICE, "player.onIsPlayingChanged=$isPlaying")
                     }
 
                     override fun onPlayerError(error: PlaybackException) {
-                        Log.e(TAG_SERVICE, "player.onPlayerError", error)
+                        Log.e(
+                            TAG_SERVICE,
+                            "player.onPlayerError code=${error.errorCode} name=${error.errorCodeName} msg=${error.message}",
+                            error,
+                        )
                     }
                 },
             )

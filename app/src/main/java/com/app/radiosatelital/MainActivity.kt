@@ -529,6 +529,11 @@ private class PlaybackCoordinator(private val appContext: android.content.Contex
                 try {
                     controller = future.get().also { it.addListener(listener) }
                     Log.i(TAG_STARTUP, "connect(): MediaController conectado")
+                    val commands = controller?.availableCommands
+                    Log.i(
+                        TAG_STARTUP,
+                        "connect(): cmds changeItems=${commands?.contains(Player.COMMAND_CHANGE_MEDIA_ITEMS)} setItem=${commands?.contains(Player.COMMAND_SET_MEDIA_ITEM)} prepare=${commands?.contains(Player.COMMAND_PREPARE)} playPause=${commands?.contains(Player.COMMAND_PLAY_PAUSE)}",
+                    )
                     updateStateFromController()
                     pendingStation?.let { playInternal(it) }
                 } catch (_: Exception) {
@@ -615,13 +620,21 @@ private class PlaybackCoordinator(private val appContext: android.content.Contex
         val mediaItems = defaultStations.map { it.toMediaItem() }
 
         try {
-            Log.i(TAG_STARTUP, "playInternal(): preparando reproducción url=${station.url}")
+            val commands = activeController.availableCommands
+            Log.i(
+                TAG_STARTUP,
+                "playInternal(): radio=${station.name} url=${station.url} idx=$startIndex cmds(change=${commands.contains(Player.COMMAND_CHANGE_MEDIA_ITEMS)},setItem=${commands.contains(Player.COMMAND_SET_MEDIA_ITEM)},prepare=${commands.contains(Player.COMMAND_PREPARE)},playPause=${commands.contains(Player.COMMAND_PLAY_PAUSE)})",
+            )
             activeController.setMediaItems(mediaItems, startIndex, C.TIME_UNSET)
             activeController.prepare()
             activeController.play()
             updateStateFromController()
         } catch (e: Exception) {
-            Log.e(TAG_STARTUP, "playInternal(): excepción al reproducir", e)
+            Log.e(
+                TAG_STARTUP,
+                "playInternal(): excepción al reproducir radio=${station.name} url=${station.url} msg=${e.message}",
+                e,
+            )
             uiState = uiState.copy(
                 playbackState = RadioPlaybackState.Error(
                     e.message ?: "No se pudo reproducir la emisora",
@@ -658,6 +671,10 @@ private class PlaybackCoordinator(private val appContext: android.content.Contex
             selectedStation = selectedStation,
             playbackState = newState,
             errorMessage = if (newState is RadioPlaybackState.Error) newState.message else null,
+        )
+        Log.i(
+            TAG_STARTUP,
+            "updateState(): state=$newState mediaId=${activeController.currentMediaItem?.mediaId} error=${activeController.playerError?.message}",
         )
     }
 
