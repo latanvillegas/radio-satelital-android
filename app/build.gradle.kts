@@ -52,6 +52,7 @@ dependencies {
 	implementation("androidx.compose.ui:ui-tooling-preview")
 	implementation("androidx.compose.material3:material3")
 	implementation("androidx.media3:media3-exoplayer:1.3.1")
+	implementation("androidx.media3:media3-session:1.3.1")
 
 	debugImplementation("androidx.compose.ui:ui-tooling")
 	debugImplementation("androidx.compose.ui:ui-test-manifest")
