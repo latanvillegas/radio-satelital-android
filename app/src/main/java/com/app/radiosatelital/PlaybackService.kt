@@ -5,13 +5,18 @@ import android.content.Intent
 import android.util.Log
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaSession
+import androidx.media3.session.MediaSession.MediaItemsWithStartPosition
 import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommands
+import androidx.media3.session.SessionResult
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
 
 class PlaybackService : MediaSessionService() {
 
@@ -65,6 +70,28 @@ class PlaybackService : MediaSessionService() {
 
         override fun onDisconnected(session: MediaSession, controller: MediaSession.ControllerInfo) {
             Log.i(TAG_SERVICE, "onDisconnected(): controller desconectado pkg=${controller.packageName}")
+        }
+
+        override fun onAddMediaItems(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            mediaItems: List<MediaItem>,
+        ): ListenableFuture<List<MediaItem>> {
+            val resolved = mediaItems.map(::resolveMediaItem)
+            return Futures.immediateFuture(resolved)
+        }
+
+        override fun onSetMediaItems(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            mediaItems: List<MediaItem>,
+            startIndex: Int,
+            startPositionMs: Long,
+        ): ListenableFuture<MediaItemsWithStartPosition> {
+            val resolved = mediaItems.map(::resolveMediaItem)
+            return Futures.immediateFuture(
+                MediaItemsWithStartPosition(resolved, startIndex, startPositionMs),
+            )
         }
     }
 
@@ -142,4 +169,42 @@ class PlaybackService : MediaSessionService() {
         const val SESSION_ID = "radio_satelital_playback"
         const val TAG_SERVICE = "RADIO_SERVICE"
     }
+
+    private fun resolveMediaItem(item: MediaItem): MediaItem {
+        val originalUri = item.localConfiguration?.uri?.toString()
+        if (!originalUri.isNullOrBlank()) {
+            Log.i(
+                TAG_SERVICE,
+                "mediaItem resuelto con URI final: mediaId=${item.mediaId} uri=$originalUri",
+            )
+            return item
+        }
+
+        val index = item.mediaId.toIntOrNull()
+        val station = index?.let { defaultStations.getOrNull(it) }
+        return if (station != null) {
+            val resolved = MediaItem.Builder()
+                .setMediaId(item.mediaId)
+                .setUri(station.url)
+                .setMediaMetadata(
+                    item.mediaMetadata
+                        .buildUpon()
+                        .setTitle(station.name)
+                        .setArtist(station.serviceLocationLabel)
+                        .build(),
+                )
+                .build()
+            Log.i(
+                TAG_SERVICE,
+                "mediaItem resuelto con URI final: mediaId=${item.mediaId} uri=${station.url}",
+            )
+            resolved
+        } else {
+            Log.e(TAG_SERVICE, "mediaItem sin URI y sin índice válido: mediaId=${item.mediaId}")
+            item
+        }
+    }
+
+    private val RadioStation.serviceLocationLabel: String
+        get() = if (region.isBlank()) country else "$country · $region"
 }

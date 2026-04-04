@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -135,13 +136,19 @@ fun RadioSatelitalApp() {
                     )
                 }
 
-                items(defaultStations) { station ->
-                    val selected = uiState.selectedStation?.url == station.url
+                itemsIndexed(
+                    items = defaultStations,
+                    key = { index, _ -> index },
+                ) { index, station ->
+                    val selected = uiState.selectedStationId == index.toString()
                     StationRow(
                         station = station,
                         selected = selected,
                         isPlaying = selected && uiState.playbackState is RadioPlaybackState.Playing,
-                        onClick = { playbackCoordinator.play(station) },
+                        onClick = {
+                            Log.i("RADIO_UI", "click item: nombre=${station.name} index=$index url=${station.url}")
+                            playbackCoordinator.play(index, station)
+                        },
                     )
                 }
 
@@ -474,6 +481,7 @@ private sealed interface RadioPlaybackState {
 
 private data class RadioUiState(
     val selectedStation: RadioStation? = null,
+    val selectedStationId: String? = null,
     val playbackState: RadioPlaybackState = RadioPlaybackState.NoneSelected,
     val errorMessage: String? = null,
 )
@@ -485,7 +493,9 @@ private class PlaybackCoordinator(private val appContext: android.content.Contex
 
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private var controller: MediaController? = null
-    private var pendingStation: RadioStation? = null
+    private data class PendingSelection(val index: Int, val station: RadioStation)
+
+    private var pendingSelection: PendingSelection? = null
 
     private val listener = object : Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
@@ -535,7 +545,7 @@ private class PlaybackCoordinator(private val appContext: android.content.Contex
                         "connect(): cmds changeItems=${commands?.contains(Player.COMMAND_CHANGE_MEDIA_ITEMS)} setItem=${commands?.contains(Player.COMMAND_SET_MEDIA_ITEM)} prepare=${commands?.contains(Player.COMMAND_PREPARE)} playPause=${commands?.contains(Player.COMMAND_PLAY_PAUSE)}",
                     )
                     updateStateFromController()
-                    pendingStation?.let { playInternal(it) }
+                    pendingSelection?.let { playInternal(it.index, it.station) }
                 } catch (_: Exception) {
                     Log.e(TAG_STARTUP, "connect(): fallo al conectar MediaController")
                     uiState = uiState.copy(
@@ -556,23 +566,25 @@ private class PlaybackCoordinator(private val appContext: android.content.Contex
         controller = null
         controllerFuture?.let(MediaController::releaseFuture)
         controllerFuture = null
-        pendingStation = null
+        pendingSelection = null
     }
 
-    fun play(station: RadioStation) {
+    fun play(index: Int, station: RadioStation) {
         ensureConnected()
         Log.i(TAG_STARTUP, "play(): emisora seleccionada=${station.name}")
         uiState = uiState.copy(
             selectedStation = station,
+            selectedStationId = index.toString(),
             playbackState = RadioPlaybackState.Loading,
             errorMessage = null,
         )
-        pendingStation = station
+        Log.i("RADIO_UI", "selectedStation actualizado: nombre=${station.name} id=$index")
+        pendingSelection = PendingSelection(index, station)
         if (controller == null) {
             connect()
             return
         }
-        playInternal(station)
+        playInternal(index, station)
     }
 
     fun togglePlayback() {
@@ -606,32 +618,32 @@ private class PlaybackCoordinator(private val appContext: android.content.Contex
         controller?.seekToNextMediaItem()
     }
 
-    private fun playInternal(station: RadioStation) {
+    private fun playInternal(index: Int, station: RadioStation) {
         val activeController = controller ?: return
-        pendingStation = null
-        val startIndex = defaultStations.indexOfFirst { it.url == station.url }
-        if (startIndex == -1) {
+        pendingSelection = null
+        if (index !in defaultStations.indices) {
             uiState = uiState.copy(
                 playbackState = RadioPlaybackState.Error("No se encontró la emisora seleccionada"),
                 errorMessage = "No se encontró la emisora seleccionada",
             )
             return
         }
-        val mediaItems = defaultStations.map { it.toMediaItem() }
+        val mediaItems = defaultStations.mapIndexed { i, item -> item.toMediaItem(i) }
 
         try {
             val commands = activeController.availableCommands
             Log.i(
-                TAG_STARTUP,
-                "playInternal(): radio=${station.name} url=${station.url} idx=$startIndex cmds(change=${commands.contains(Player.COMMAND_CHANGE_MEDIA_ITEMS)},setItem=${commands.contains(Player.COMMAND_SET_MEDIA_ITEM)},prepare=${commands.contains(Player.COMMAND_PREPARE)},playPause=${commands.contains(Player.COMMAND_PLAY_PAUSE)})",
+                "RADIO_CTRL",
+                "mediaItem enviado al controller: radio=${station.name} mediaId=$index url=${station.url} cmds(change=${commands.contains(Player.COMMAND_CHANGE_MEDIA_ITEMS)},setItem=${commands.contains(Player.COMMAND_SET_MEDIA_ITEM)},prepare=${commands.contains(Player.COMMAND_PREPARE)},playPause=${commands.contains(Player.COMMAND_PLAY_PAUSE)})",
             )
-            activeController.setMediaItems(mediaItems, startIndex, C.TIME_UNSET)
+            activeController.setMediaItems(mediaItems, index, C.TIME_UNSET)
             activeController.prepare()
             activeController.play()
+            Log.i("RADIO_CTRL", "prepare/play ejecutados: mediaId=$index")
             updateStateFromController()
         } catch (e: Exception) {
             Log.e(
-                TAG_STARTUP,
+                "RADIO_CTRL",
                 "playInternal(): excepción al reproducir radio=${station.name} url=${station.url} msg=${e.message}",
                 e,
             )
@@ -647,8 +659,8 @@ private class PlaybackCoordinator(private val appContext: android.content.Contex
     private fun updateStateFromController() {
         val activeController = controller ?: return
         val currentMediaId = activeController.currentMediaItem?.mediaId
-        val selectedStation = currentMediaId?.let { mediaId ->
-            defaultStations.firstOrNull { station -> station.url == mediaId }
+        val selectedStation = currentMediaId?.toIntOrNull()?.let { stationIndex ->
+            defaultStations.getOrNull(stationIndex)
         } ?: uiState.selectedStation
 
         val newState = when {
@@ -669,6 +681,7 @@ private class PlaybackCoordinator(private val appContext: android.content.Contex
 
         uiState = uiState.copy(
             selectedStation = selectedStation,
+            selectedStationId = currentMediaId ?: uiState.selectedStationId,
             playbackState = newState,
             errorMessage = if (newState is RadioPlaybackState.Error) newState.message else null,
         )
@@ -689,9 +702,9 @@ private class PlaybackCoordinator(private val appContext: android.content.Contex
     }
 }
 
-private fun RadioStation.toMediaItem(): MediaItem {
+private fun RadioStation.toMediaItem(index: Int): MediaItem {
     return MediaItem.Builder()
-        .setMediaId(url)
+        .setMediaId(index.toString())
         .setUri(url)
         .setMediaMetadata(
             MediaMetadata.Builder()
