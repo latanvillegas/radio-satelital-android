@@ -28,6 +28,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import java.net.URI
 
 enum class HomeTab(val label: String) {
     Music("Musica"),
@@ -98,6 +99,11 @@ class PlaybackCoordinator(private val appContext: android.content.Context) {
         }
 
         override fun onPlayerError(error: PlaybackException) {
+            Log.e(
+                "RADIO_CTRL",
+                "onPlayerError: code=${error.errorCode} name=${error.errorCodeName} msg=${error.message} cause=${error.cause?.message} station=${uiState.selectedStation?.name} url=${uiState.selectedStation?.url}",
+                error,
+            )
             uiState = uiState.copy(
                 playbackState = RadioPlaybackState.Error(
                     error.message ?: "No se pudo reproducir la emisora",
@@ -306,9 +312,11 @@ class PlaybackCoordinator(private val appContext: android.content.Context) {
 }
 
 private fun RadioStation.toMediaItem(index: Int): MediaItem {
+    val resolvedUrl = resolvePlayableStreamUrl(url)
+    Log.i("RADIO_CTRL", "toMediaItem(): station=$name rawUrl=$url resolvedUrl=$resolvedUrl mediaId=$index")
     return MediaItem.Builder()
         .setMediaId(index.toString())
-        .setUri(url)
+        .setUri(resolvedUrl)
         .setMediaMetadata(
             MediaMetadata.Builder()
                 .setTitle(name)
@@ -317,6 +325,22 @@ private fun RadioStation.toMediaItem(index: Int): MediaItem {
                 .build(),
         )
         .build()
+}
+
+private fun resolvePlayableStreamUrl(rawUrl: String): String {
+    val trimmed = rawUrl.trim()
+    if (trimmed.isBlank()) return rawUrl
+
+    val parsed = runCatching { URI(trimmed) }.getOrNull() ?: return trimmed
+    val host = parsed.host?.lowercase().orEmpty()
+    val path = parsed.path.orEmpty()
+
+    // Many Zeno entries include expired signed query params. The canonical stream path works without them.
+    if (host.endsWith("zeno.fm") && path.isNotBlank()) {
+        return "${parsed.scheme}://$host$path"
+    }
+
+    return trimmed
 }
 
 val RadioStation.locationLabel: String

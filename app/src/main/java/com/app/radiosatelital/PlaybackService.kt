@@ -8,7 +8,9 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSession.MediaItemsWithStartPosition
@@ -99,7 +101,24 @@ class PlaybackService : MediaSessionService() {
         super.onCreate()
         Log.i(TAG_SERVICE, "onCreate(): iniciando PlaybackService")
 
-        player = ExoPlayer.Builder(this).build().apply {
+        val httpDataSourceFactory = DefaultHttpDataSource.Factory()
+            .setUserAgent("RadioSatelital/1.0 (Android; Media3)")
+            .setAllowCrossProtocolRedirects(true)
+            .setConnectTimeoutMs(12_000)
+            .setReadTimeoutMs(20_000)
+            .setDefaultRequestProperties(
+                mapOf(
+                    "Icy-MetaData" to "1",
+                ),
+            )
+
+        player = ExoPlayer.Builder(this)
+            .setMediaSourceFactory(
+                DefaultMediaSourceFactory(this)
+                    .setDataSourceFactory(httpDataSourceFactory),
+            )
+            .build()
+            .apply {
             setAudioAttributes(
                 AudioAttributes.Builder()
                     .setUsage(C.USAGE_MEDIA)
@@ -124,7 +143,7 @@ class PlaybackService : MediaSessionService() {
                     override fun onPlayerError(error: PlaybackException) {
                         Log.e(
                             TAG_SERVICE,
-                            "player.onPlayerError code=${error.errorCode} name=${error.errorCodeName} msg=${error.message}",
+                            "player.onPlayerError code=${error.errorCode} name=${error.errorCodeName} msg=${error.message} cause=${error.cause?.message} uri=${player.currentMediaItem?.localConfiguration?.uri}",
                             error,
                         )
                     }

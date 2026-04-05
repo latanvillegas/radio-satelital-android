@@ -10,6 +10,7 @@
 		android:allowBackup="true"
 		android:label="Radio Satelital"
 		android:theme="@android:style/Theme.Material.Light.NoActionBar"
+		android:usesCleartextTraffic="true"
 		android:supportsRtl="true">
 		<service
 			android:name=".PlaybackService"
