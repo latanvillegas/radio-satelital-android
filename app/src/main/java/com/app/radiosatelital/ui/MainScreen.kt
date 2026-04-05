@@ -1,5 +1,6 @@
 package com.app.radiosatelital.ui
 
+import android.content.Intent
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,8 +19,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -28,6 +31,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
@@ -55,10 +60,22 @@ fun MainScreen(
     onThemeChange: (AppThemeMode) -> Unit,
     onLayoutModeChange: (RadioLayoutMode) -> Unit,
 ) {
+    val context = LocalContext.current
+    val appVersion = remember(context) {
+        runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0"
+        }.getOrDefault("1.0")
+    }
     val uiState = coordinator.uiState
+    val cloudViewModel: RadioCloudViewModel = viewModel()
+    val cloudState = cloudViewModel.uiState
+    val baseCatalog = remember(cloudState.publicRadios) {
+        (defaultStations + cloudState.publicRadios).distinctBy { it.url }
+    }
     var showPlayer by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var showSearch by remember { mutableStateOf(false) }
+    var showAbout by remember { mutableStateOf(false) }
     var favorites by remember { mutableStateOf(setOf<Int>()) }
     val userStations = remember { mutableStateListOf<UserRadioStation>() }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -79,6 +96,7 @@ fun MainScreen(
 
     if (showSearch) {
         SearchScreen(
+            stations = baseCatalog,
             favorites = favorites,
             onFavoriteClick = { index ->
                 favorites = if (favorites.contains(index)) {
@@ -88,7 +106,7 @@ fun MainScreen(
                 }
             },
             onStationSelect = { index: Int, station: RadioStation ->
-                coordinator.play(index, station)
+                coordinator.play(index, station, baseCatalog)
                 showPlayer = true
             },
             onClose = { showSearch = false },
@@ -124,7 +142,31 @@ fun MainScreen(
         drawerContent = {
             ModalDrawerSheet {
                 NavigationDrawerContent(
-                    onClose = { scope.launch { drawerState.close() } },
+                    onAboutClick = {
+                        scope.launch {
+                            drawerState.close()
+                            showAbout = true
+                        }
+                    },
+                    onShareClick = {
+                        scope.launch {
+                            drawerState.close()
+                            val appId = context.packageName
+                            val shareText = buildString {
+                                append("Escucha radios en vivo con Radio Satelital")
+                                append("\n\n")
+                                append("App: Radio Satelital")
+                                append("\n")
+                                append("https://play.google.com/store/apps/details?id=")
+                                append(appId)
+                            }
+                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, shareText)
+                            }
+                            context.startActivity(Intent.createChooser(shareIntent, "Compartir app"))
+                        }
+                    },
                 )
             }
         },
@@ -164,6 +206,8 @@ fun MainScreen(
                     uiState.selectedStation?.let { station ->
                         MiniPlayerBar(
                             station = station,
+                            artistName = uiState.nowPlayingArtist,
+                            songTitle = uiState.nowPlayingTitle,
                             isPlaying = uiState.playbackState is RadioPlaybackState.Playing,
                             onOpenPlayer = { showPlayer = true },
                             onPrevious = coordinator::previous,
@@ -188,20 +232,21 @@ fun MainScreen(
             ) {
                 if (uiState.currentTab == HomeTab.Country) {
                     CountryExplorerScreen(
-                        stations = defaultStations + userStations.map { it.toRadioStation() },
+                        stations = (baseCatalog + userStations.map { it.toRadioStation() }).distinctBy { it.url },
                         selectedStationUrl = uiState.selectedStation?.url,
                         favorites = favorites,
                         onFavoriteClick = { index ->
                             favorites = if (favorites.contains(index)) favorites - index else favorites + index
                         },
                         onStationClick = { index, station ->
-                            val catalog = defaultStations + userStations.map { it.toRadioStation() }
+                            val catalog = (baseCatalog + userStations.map { it.toRadioStation() }).distinctBy { it.url }
                             coordinator.play(index, station, catalog)
                         },
                     )
                 } else if (uiState.currentTab == HomeTab.Mine) {
                     MineRadiosScreen(
                         stations = userStations,
+                        cloudMessage = cloudState.infoMessage,
                         onPlayStation = { catalog, index ->
                             catalog.getOrNull(index)?.let { station ->
                                 coordinator.play(index, station, catalog)
@@ -210,6 +255,7 @@ fun MainScreen(
                         onSaveStation = { station, editIndex ->
                             if (editIndex == null) {
                                 userStations.add(station)
+                                cloudViewModel.submitUserRadio(station)
                             } else if (editIndex in userStations.indices) {
                                 userStations[editIndex] = station
                             }
@@ -222,8 +268,8 @@ fun MainScreen(
                     )
                 } else {
                     val filteredIndices = when (uiState.currentTab) {
-                        HomeTab.Music -> defaultStations.indices.toList()
-                        HomeTab.Favorites -> defaultStations.indices.filter { favorites.contains(it) }
+                        HomeTab.Music -> baseCatalog.indices.toList()
+                        HomeTab.Favorites -> baseCatalog.indices.filter { favorites.contains(it) }
                         HomeTab.Mine -> emptyList()
                         HomeTab.Country -> emptyList()
                     }
@@ -242,7 +288,7 @@ fun MainScreen(
                                 key = { filteredIndices[it] },
                             ) { displayIndex ->
                                 val index = filteredIndices[displayIndex]
-                                val station = defaultStations[index]
+                                val station = baseCatalog[index]
                                 RadioListItem(
                                     station = station,
                                     selected = uiState.selectedStation?.url == station.url,
@@ -250,7 +296,7 @@ fun MainScreen(
                                     onFavoriteClick = {
                                         favorites = if (favorites.contains(index)) favorites - index else favorites + index
                                     },
-                                    onClick = { coordinator.play(index, station, defaultStations) },
+                                    onClick = { coordinator.play(index, station, baseCatalog) },
                                 )
                             }
                         }
@@ -266,7 +312,7 @@ fun MainScreen(
                                 key = { filteredIndices[it] },
                             ) { displayIndex ->
                                 val index = filteredIndices[displayIndex]
-                                val station = defaultStations[index]
+                                val station = baseCatalog[index]
                                 RadioListItem(
                                     station = station,
                                     selected = uiState.selectedStation?.url == station.url,
@@ -274,7 +320,7 @@ fun MainScreen(
                                     onFavoriteClick = {
                                         favorites = if (favorites.contains(index)) favorites - index else favorites + index
                                     },
-                                    onClick = { coordinator.play(index, station, defaultStations) },
+                                    onClick = { coordinator.play(index, station, baseCatalog) },
                                 )
                             }
                         }
@@ -282,5 +328,25 @@ fun MainScreen(
                 }
             }
         }
+    }
+
+    if (showAbout) {
+        AlertDialog(
+            onDismissRequest = { showAbout = false },
+            title = { Text("Acerca de") },
+            text = {
+                Text(
+                    "Radio Satelital\n" +
+                        "Version: $appVersion\n\n" +
+                        "Escucha radios en vivo desde una sola aplicacion.\n" +
+                        "Desarrollador: Radio Satelital Team",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showAbout = false }) {
+                    Text("Cerrar")
+                }
+            },
+        )
     }
 }

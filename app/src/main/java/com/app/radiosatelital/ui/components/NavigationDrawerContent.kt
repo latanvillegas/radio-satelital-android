@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -17,7 +16,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun NavigationDrawerContent(onClose: () -> Unit) {
+fun NavigationDrawerContent(
+    onAboutClick: () -> Unit,
+    onShareClick: () -> Unit,
+) {
     Column(modifier = Modifier.fillMaxWidth()) {
         // Header
         Text(
@@ -33,18 +35,7 @@ fun NavigationDrawerContent(onClose: () -> Unit) {
             icon = { Icon(Icons.Filled.Info, contentDescription = "Acerca de") },
             selected = false,
             onClick = {
-                // Placeholder for future About screen
-                onClose()
-            },
-        )
-
-        NavigationDrawerItem(
-            label = { Text("Tus descargas") },
-            icon = { Icon(Icons.Filled.Folder, contentDescription = "Descargas") },
-            selected = false,
-            onClick = {
-                // Placeholder for downloads
-                onClose()
+                onAboutClick()
             },
         )
 
@@ -53,8 +44,7 @@ fun NavigationDrawerContent(onClose: () -> Unit) {
             icon = { Icon(Icons.Filled.Share, contentDescription = "Compartir") },
             selected = false,
             onClick = {
-                // Placeholder for share functionality
-                onClose()
+                onShareClick()
             },
         )
     }

@@ -20,7 +20,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -31,12 +30,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.app.radiosatelital.RadioStation
-import com.app.radiosatelital.defaultStations
 import com.app.radiosatelital.ui.components.RadioListItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
+    stations: List<RadioStation>,
     favorites: Set<Int>,
     onFavoriteClick: (Int) -> Unit,
     onStationSelect: (Int, RadioStation) -> Unit,
@@ -44,12 +43,12 @@ fun SearchScreen(
 ) {
     var searchQuery by remember { mutableStateOf("") }
 
-    val filteredStations = remember(searchQuery) {
+    val filteredStations = remember(searchQuery, stations) {
         if (searchQuery.isBlank()) {
             emptyList()
         } else {
             val query = searchQuery.lowercase()
-            defaultStations.mapIndexed { index, station -> index to station }
+            stations.mapIndexed { index, station -> index to station }
                 .filter { (_, station) ->
                     station.name.lowercase().contains(query) ||
                         station.locationLabel.lowercase().contains(query)

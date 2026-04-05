@@ -25,9 +25,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.app.radiosatelital.RadioStation
+import com.app.radiosatelital.ui.resolvedLogoUrl
 import com.app.radiosatelital.ui.locationLabel
 
 @Composable
@@ -70,6 +73,14 @@ fun RadioListItem(
                     imageVector = Icons.Filled.Radio,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
+                )
+                AsyncImage(
+                    model = station.resolvedLogoUrl(),
+                    contentDescription = "Logo ${station.name}",
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop,
                 )
             }
 

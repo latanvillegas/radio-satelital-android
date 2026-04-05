@@ -57,12 +57,15 @@ fun UserRadioStation.toRadioStation(): RadioStation {
         country = country,
         region = location,
         url = streamUrl,
+        logoUrl = logoUrl.ifBlank { null },
+        genre = genre,
     )
 }
 
 @Composable
 fun MineRadiosScreen(
     stations: List<UserRadioStation>,
+    cloudMessage: String?,
     onPlayStation: (List<RadioStation>, Int) -> Unit,
     onSaveStation: (UserRadioStation, Int?) -> Unit,
     onDeleteStation: (Int) -> Unit,
@@ -90,6 +93,14 @@ fun MineRadiosScreen(
                 Icon(Icons.Filled.Add, contentDescription = null)
                 Text(text = "Agregar", modifier = Modifier.padding(start = 6.dp))
             }
+        }
+
+        if (!cloudMessage.isNullOrBlank()) {
+            Text(
+                text = cloudMessage,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
 
         if (stations.isEmpty()) {

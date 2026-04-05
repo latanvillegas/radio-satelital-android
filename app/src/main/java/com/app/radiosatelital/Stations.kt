@@ -5,6 +5,8 @@ data class RadioStation(
 	val country: String,
 	val region: String,
 	val url: String,
+	val logoUrl: String? = null,
+	val genre: String = "",
 )
 
 val defaultStations = listOf(

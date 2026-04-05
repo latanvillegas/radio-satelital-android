@@ -27,14 +27,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.app.radiosatelital.RadioStation
+import com.app.radiosatelital.ui.fallbackSongInfo
 import com.app.radiosatelital.ui.locationLabel
+import com.app.radiosatelital.ui.resolvedLogoUrl
 
 @Composable
 fun MiniPlayerBar(
     station: RadioStation,
+    artistName: String?,
+    songTitle: String?,
     isPlaying: Boolean,
     onOpenPlayer: () -> Unit,
     onPrevious: () -> Unit,
@@ -64,11 +70,26 @@ fun MiniPlayerBar(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(Icons.Filled.Radio, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                AsyncImage(
+                    model = station.resolvedLogoUrl(),
+                    contentDescription = "Logo ${station.name}",
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop,
+                )
             }
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = station.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, maxLines = 1)
-                Text(text = station.locationLabel, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                val nowPlaying = if (!artistName.isNullOrBlank() && !songTitle.isNullOrBlank()) {
+                    "$artistName · $songTitle"
+                } else if (!songTitle.isNullOrBlank()) {
+                    songTitle
+                } else {
+                    "Sin informacion de la cancion actual"
+                }
+                Text(text = nowPlaying, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             }
 
             IconButton(onClick = onPrevious) { Icon(Icons.Filled.SkipPrevious, contentDescription = "Anterior") }

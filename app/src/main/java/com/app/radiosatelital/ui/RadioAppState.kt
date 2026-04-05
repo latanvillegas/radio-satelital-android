@@ -20,8 +20,14 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.app.radiosatelital.PlaybackService
 import com.app.radiosatelital.RadioStation
+import com.app.radiosatelital.data.artwork.ArtworkRepository
 import com.app.radiosatelital.defaultStations
 import com.google.common.util.concurrent.ListenableFuture
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 enum class HomeTab(val label: String) {
     Music("Musica"),
@@ -46,6 +52,9 @@ data class RadioUiState(
     val errorMessage: String? = null,
     val currentTab: HomeTab = HomeTab.Music,
     val volume: Float = 1f,
+    val nowPlayingArtist: String? = null,
+    val nowPlayingTitle: String? = null,
+    val artworkUrl: String? = null,
 )
 
 class PlaybackCoordinator(private val appContext: android.content.Context) {
@@ -63,6 +72,9 @@ class PlaybackCoordinator(private val appContext: android.content.Context) {
     private var controller: MediaController? = null
     private var pendingSelection: PendingSelection? = null
     private var activeCatalog: List<RadioStation> = defaultStations
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private val artworkRepository = ArtworkRepository()
+    private var lastArtworkLookupKey: String? = null
 
     private val listener = object : Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
@@ -79,6 +91,10 @@ class PlaybackCoordinator(private val appContext: android.content.Context) {
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             updateStateFromController()
+        }
+
+        override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
+            updateNowPlayingFromMetadata(mediaMetadata)
         }
 
         override fun onPlayerError(error: PlaybackException) {
@@ -126,6 +142,7 @@ class PlaybackCoordinator(private val appContext: android.content.Context) {
         controllerFuture?.let(MediaController::releaseFuture)
         controllerFuture = null
         pendingSelection = null
+        scope.cancel()
     }
 
     fun play(index: Int, station: RadioStation, catalog: List<RadioStation> = defaultStations) {
@@ -136,6 +153,9 @@ class PlaybackCoordinator(private val appContext: android.content.Context) {
             selectedStationId = index.toString(),
             playbackState = RadioPlaybackState.Loading,
             errorMessage = null,
+            nowPlayingArtist = null,
+            nowPlayingTitle = null,
+            artworkUrl = null,
         )
         Log.i("RADIO_UI", "selectedStation actualizado: nombre=${station.name} id=$index")
         activeCatalog = catalog
@@ -251,6 +271,31 @@ class PlaybackCoordinator(private val appContext: android.content.Context) {
             errorMessage = if (newState is RadioPlaybackState.Error) newState.message else null,
             volume = activeController.volume,
         )
+        updateNowPlayingFromMetadata(activeController.mediaMetadata)
+    }
+
+    private fun updateNowPlayingFromMetadata(metadata: MediaMetadata) {
+        val parsed = StreamMetadataParser.parse(
+            artistRaw = metadata.artist?.toString(),
+            titleRaw = metadata.title?.toString(),
+            displayTitleRaw = metadata.displayTitle?.toString(),
+        )
+
+        uiState = uiState.copy(
+            nowPlayingArtist = parsed.artist,
+            nowPlayingTitle = parsed.title,
+        )
+
+        val lookupKey = listOf(parsed.artist, parsed.title).joinToString("||")
+        if (lookupKey.isBlank() || lookupKey == lastArtworkLookupKey) return
+        lastArtworkLookupKey = lookupKey
+
+        scope.launch {
+            val artwork = artworkRepository.fetchArtworkIfPossible(parsed.artist, parsed.title)
+            uiState = uiState.copy(
+                artworkUrl = artwork.artworkUrl,
+            )
+        }
     }
 
     private fun ensureConnected() {
@@ -267,6 +312,7 @@ private fun RadioStation.toMediaItem(index: Int): MediaItem {
         .setMediaMetadata(
             MediaMetadata.Builder()
                 .setTitle(name)
+                .setDisplayTitle(name)
                 .setArtist(locationLabel)
                 .build(),
         )

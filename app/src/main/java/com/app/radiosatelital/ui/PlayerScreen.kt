@@ -11,7 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PauseCircle
@@ -30,8 +30,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import com.app.radiosatelital.ui.resolvedLogoUrl
 
 @Composable
 fun PlayerScreen(
@@ -62,7 +65,7 @@ fun PlayerScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.Filled.ArrowBack, contentDescription = "Volver", tint = Color.White)
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver", tint = Color.White)
                 }
                 IconButton(onClick = onFavoriteClick) {
                     Icon(
@@ -86,6 +89,14 @@ fun PlayerScreen(
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(Icons.Filled.Radio, contentDescription = null, tint = Color.White, modifier = Modifier.size(90.dp))
+                    AsyncImage(
+                        model = station.resolvedLogoUrl(),
+                        contentDescription = "Logo ${station.name}",
+                        modifier = Modifier
+                            .size(220.dp)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop,
+                    )
                 }
                 Text(
                     text = station.name,
@@ -96,6 +107,18 @@ fun PlayerScreen(
                 Text(
                     text = station.locationLabel,
                     style = MaterialTheme.typography.titleMedium,
+                    color = Color.White.copy(alpha = 0.92f),
+                )
+                val nowPlayingText = when {
+                    !uiState.nowPlayingArtist.isNullOrBlank() && !uiState.nowPlayingTitle.isNullOrBlank() -> {
+                        "${uiState.nowPlayingArtist} · ${uiState.nowPlayingTitle}"
+                    }
+                    !uiState.nowPlayingTitle.isNullOrBlank() -> uiState.nowPlayingTitle
+                    else -> "Sin informacion de la cancion actual"
+                }
+                Text(
+                    text = nowPlayingText,
+                    style = MaterialTheme.typography.bodyLarge,
                     color = Color.White.copy(alpha = 0.92f),
                 )
             }
