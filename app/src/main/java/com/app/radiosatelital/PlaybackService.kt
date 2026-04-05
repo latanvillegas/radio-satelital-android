@@ -101,55 +101,60 @@ class PlaybackService : MediaSessionService() {
         super.onCreate()
         Log.i(TAG_SERVICE, "onCreate(): iniciando PlaybackService")
 
-        val httpDataSourceFactory = DefaultHttpDataSource.Factory()
-            .setUserAgent("RadioSatelital/1.0 (Android; Media3)")
+        val extractorsFactory = androidx.media3.extractor.DefaultExtractorsFactory()
+            .setConstantBitrateSeekingEnabled(true)
+
+        val httpDataSourceFactory = androidx.media3.datasource.DefaultHttpDataSource.Factory()
+            .setUserAgent("ExoPlayer")
             .setAllowCrossProtocolRedirects(true)
             .setConnectTimeoutMs(12_000)
             .setReadTimeoutMs(20_000)
-            .setDefaultRequestProperties(
-                mapOf(
-                    "Icy-MetaData" to "1",
-                ),
-            )
 
-        player = ExoPlayer.Builder(this)
+        player = androidx.media3.exoplayer.ExoPlayer.Builder(this)
             .setMediaSourceFactory(
-                DefaultMediaSourceFactory(this)
+                androidx.media3.exoplayer.source.DefaultMediaSourceFactory(this, extractorsFactory)
                     .setDataSourceFactory(httpDataSourceFactory),
             )
             .build()
             .apply {
-            setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(C.USAGE_MEDIA)
-                    .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
-                    .build(),
-                true,
-            )
-            setHandleAudioBecomingNoisy(true)
-            addListener(
-                object : Player.Listener {
-                    override fun onPlaybackStateChanged(playbackState: Int) {
-                        Log.i(
-                            TAG_SERVICE,
-                            "player.onPlaybackStateChanged=$playbackState mediaId=${player.currentMediaItem?.mediaId} uri=${player.currentMediaItem?.localConfiguration?.uri}",
-                        )
-                    }
+                setAudioAttributes(
+                    androidx.media3.common.AudioAttributes.Builder()
+                        .setUsage(androidx.media3.common.C.USAGE_MEDIA)
+                        .setContentType(androidx.media3.common.C.AUDIO_CONTENT_TYPE_MUSIC)
+                        .build(),
+                    true,
+                )
+                setHandleAudioBecomingNoisy(true)
+                addListener(
+                    object : Player.Listener {
+                        override fun onPlaybackStateChanged(playbackState: Int) {
+                            Log.i(
+                                TAG_SERVICE,
+                                "player.onPlaybackStateChanged=$playbackState mediaId=${player.currentMediaItem?.mediaId} uri=${player.currentMediaItem?.localConfiguration?.uri}",
+                            )
+                        }
 
-                    override fun onIsPlayingChanged(isPlaying: Boolean) {
-                        Log.i(TAG_SERVICE, "player.onIsPlayingChanged=$isPlaying")
-                    }
+                        override fun onIsPlayingChanged(isPlaying: Boolean) {
+                            Log.i(TAG_SERVICE, "player.onIsPlayingChanged=$isPlaying")
+                        }
 
-                    override fun onPlayerError(error: PlaybackException) {
-                        Log.e(
-                            TAG_SERVICE,
-                            "player.onPlayerError code=${error.errorCode} name=${error.errorCodeName} msg=${error.message} cause=${error.cause?.message} uri=${player.currentMediaItem?.localConfiguration?.uri}",
-                            error,
-                        )
-                    }
-                },
-            )
-        }
+                        override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                            Log.e(
+                                TAG_SERVICE,
+                                "player.onPlayerError code=${error.errorCode} name=${error.errorCodeName} msg=${error.message} cause=${error.cause?.message} uri=${player.currentMediaItem?.localConfiguration?.uri}",
+                                error,
+                            )
+                            android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                android.widget.Toast.makeText(
+                                    applicationContext,
+                                    "Fallo de radio: ${error.errorCodeName}",
+                                    android.widget.Toast.LENGTH_LONG,
+                                ).show()
+                            }
+                        }
+                    },
+                )
+            }
 
         val launchIntent = packageManager.getLaunchIntentForPackage(packageName)
             ?: Intent(this, MainActivity::class.java)
@@ -200,11 +205,15 @@ class PlaybackService : MediaSessionService() {
         }
 
         val index = item.mediaId.toIntOrNull()
-        val station = index?.let { defaultStations.getOrNull(it) }
+        val stationByIndex = index?.let { defaultStations.getOrNull(it) }
+        val stationByMediaId = defaultStations.firstOrNull { station ->
+            station.url == item.mediaId || normalizeStreamUrl(station.url) == normalizeStreamUrl(item.mediaId)
+        }
+        val station = stationByIndex ?: stationByMediaId
         return if (station != null) {
             val resolved = MediaItem.Builder()
                 .setMediaId(item.mediaId)
-                .setUri(station.url)
+                .setUri(normalizeStreamUrl(station.url))
                 .setMediaMetadata(
                     item.mediaMetadata
                         .buildUpon()
@@ -215,13 +224,28 @@ class PlaybackService : MediaSessionService() {
                 .build()
             Log.i(
                 TAG_SERVICE,
-                "mediaItem resuelto con URI final: mediaId=${item.mediaId} uri=${station.url}",
+                "mediaItem resuelto con URI final: mediaId=${item.mediaId} uri=${normalizeStreamUrl(station.url)}",
             )
             resolved
         } else {
-            Log.e(TAG_SERVICE, "mediaItem sin URI y sin índice válido: mediaId=${item.mediaId}")
+            Log.e(TAG_SERVICE, "mediaItem sin URI y sin coincidencia válida: mediaId=${item.mediaId}")
             item
         }
+    }
+
+    private fun normalizeStreamUrl(rawUrl: String): String {
+        val trimmed = rawUrl.trim()
+        if (trimmed.isBlank()) return rawUrl
+
+        val parsed = runCatching { java.net.URI(trimmed) }.getOrNull() ?: return trimmed
+        val host = parsed.host?.lowercase().orEmpty()
+        val path = parsed.path.orEmpty()
+
+        if (host.endsWith("zeno.fm") && path.isNotBlank()) {
+            return "${parsed.scheme}://$host$path"
+        }
+
+        return trimmed
     }
 
     private val RadioStation.serviceLocationLabel: String

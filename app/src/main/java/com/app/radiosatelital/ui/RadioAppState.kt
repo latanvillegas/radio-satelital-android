@@ -14,6 +14,7 @@ import androidx.core.content.ContextCompat
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
@@ -313,17 +314,23 @@ class PlaybackCoordinator(private val appContext: android.content.Context) {
 
 private fun RadioStation.toMediaItem(index: Int): MediaItem {
     val resolvedUrl = resolvePlayableStreamUrl(url)
-    Log.i("RADIO_CTRL", "toMediaItem(): station=$name rawUrl=$url resolvedUrl=$resolvedUrl mediaId=$index")
+    val mediaId = url
+    Log.i("RADIO_CTRL", "toMediaItem(): station=$name rawUrl=$url resolvedUrl=$resolvedUrl mediaId=$mediaId index=$index")
+    val guessedMimeType = when {
+        resolvedUrl.contains(".m3u8", ignoreCase = true) -> MimeTypes.APPLICATION_M3U8
+        resolvedUrl.contains(".mp3", ignoreCase = true) -> MimeTypes.AUDIO_MPEG
+        resolvedUrl.contains("aac", ignoreCase = true) -> MimeTypes.AUDIO_AAC
+        else -> null
+    }
     return MediaItem.Builder()
-        .setMediaId(index.toString())
+        .setMediaId(mediaId)
         .setUri(resolvedUrl)
         .setMediaMetadata(
             MediaMetadata.Builder()
                 .setTitle(name)
-                .setDisplayTitle(name)
-                .setArtist(locationLabel)
                 .build(),
         )
+        .setMimeType(guessedMimeType)
         .build()
 }
 

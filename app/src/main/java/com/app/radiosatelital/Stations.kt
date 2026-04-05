@@ -12,9 +12,9 @@ data class RadioStation(
 )
 
 val defaultStations = listOf(
-	RadioStation("La Mega", "Venezuela", "", "https://eu1.lhdserver.es:9007/stream"),
-	RadioStation("Disney FM", "Perú", "", "https://27433.live.streamtheworld.com/DISNEY_PER_LM_SC"),
-	RadioStation("Acqua", "Argentina", "Mar del Plata", "https://sonic-us.streaming-chile.com:7006/"),
+	RadioStation("La Mega", "Venezuela", "", "https://rfienespagnol64k.ice.infomaniak.ch/rfienespagnol-64.mp3"),
+	RadioStation("Disney FM", "Perú", "", "https://stream-178.zeno.fm/rmnr2cphyxhvv"),
+	RadioStation("Acqua", "Argentina", "Mar del Plata", "https://jml-stream.com/radio/8000/radio.mp3"),
 	RadioStation("Acqua 100.1", "Argentina", "Villa Gesell", "https://strcdn.klm99.com:10983/acquapinamar"),
 	RadioStation("Arceri", "Costa Rica", "Aserrín", "https://stream-178.zeno.fm/rmnr2cphyxhvv?zt=eyJhbGciOiJIUzI1NiJ9.eyJzdHJlYW0iOiJybW5yMmNwaHl4aHZ2IiwiaG9zdCI6InN0cmVhbS0xNzguemVuby5mbSIsInJ0dGwiOjUsImp0aSI6ImRYMW41R2s4U08yYWx2V0JKcHRDWEEiLCJpYXQiOjE3NjU0MTkxOTEsImV4cCI6MTc2NTQxOTI1MX0.KWxdZmmrrZmvw7-yDyEuMHt6eBzZ2z_OfEElTQVFrPQ"),
 	RadioStation("Actitud", "México", "San Felipe", "https://radioenhd.com:8088/"),
