@@ -30,11 +30,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
-import com.app.radiosatelital.ui.resolvedLogoUrl
 
 @Composable
 fun PlayerScreen(
@@ -89,14 +86,6 @@ fun PlayerScreen(
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(Icons.Filled.Radio, contentDescription = null, tint = Color.White, modifier = Modifier.size(90.dp))
-                    AsyncImage(
-                        model = station.resolvedLogoUrl(),
-                        contentDescription = "Logo ${station.name}",
-                        modifier = Modifier
-                            .size(220.dp)
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop,
-                    )
                 }
                 Text(
                     text = station.name,

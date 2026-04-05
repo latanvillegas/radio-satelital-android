@@ -6,12 +6,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.ui.Alignment
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.activity.compose.BackHandler
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -36,6 +39,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
+import java.net.URI
 import java.net.URL
 
 data class UserRadioStation(
@@ -52,12 +56,15 @@ data class UserRadioStation(
 
 fun UserRadioStation.toRadioStation(): RadioStation {
     val location = listOf(region, city).filter { it.isNotBlank() }.joinToString(" · ")
+    val sanitizedLogo = sanitizeUserProvidedLogoUrl(logoUrl)
     return RadioStation(
         name = name,
         country = country,
         region = location,
         url = streamUrl,
-        logoUrl = logoUrl.ifBlank { null },
+        logoUrl = sanitizedLogo,
+        faviconUrl = null,
+        homepageUrl = null,
         genre = genre,
     )
 }
@@ -73,13 +80,21 @@ fun MineRadiosScreen(
     var editingIndex by remember { mutableStateOf<Int?>(null) }
     var showEditor by remember { mutableStateOf(false) }
 
+    BackHandler(enabled = showEditor) {
+        showEditor = false
+    }
+
     Column(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
                 text = "Mis radios",
@@ -110,7 +125,12 @@ fun MineRadiosScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         } else {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 itemsIndexed(stations) { index, station ->
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
@@ -225,6 +245,12 @@ private fun AddEditRadioDialog(
                             return@launch
                         }
 
+                        val validatedLogo = sanitizeUserProvidedLogoUrl(logoUrl)
+                        if (logoUrl.isNotBlank() && validatedLogo == null) {
+                            errorMessage = "Logo URL invalido. Usa una URL http/https real"
+                            return@launch
+                        }
+
                         onSave(
                             UserRadioStation(
                                 name = name.trim(),
@@ -235,7 +261,7 @@ private fun AddEditRadioDialog(
                                 continent = continent.trim(),
                                 genre = genre.trim(),
                                 description = description.trim(),
-                                logoUrl = logoUrl.trim(),
+                                logoUrl = validatedLogo.orEmpty(),
                             ),
                         )
                     }
@@ -251,6 +277,17 @@ private fun AddEditRadioDialog(
             }
         },
     )
+}
+
+private fun sanitizeUserProvidedLogoUrl(rawUrl: String): String? {
+    val trimmed = rawUrl.trim()
+    if (trimmed.isBlank()) return null
+    val uri = runCatching { URI(trimmed) }.getOrNull() ?: return null
+    val scheme = uri.scheme?.lowercase() ?: return null
+    if (scheme != "http" && scheme != "https") return null
+    val host = uri.host?.trim()?.takeIf { it.isNotBlank() } ?: return null
+    if (host == "localhost" || host == "127.0.0.1") return null
+    return uri.toString()
 }
 
 private suspend fun validateStreamingUrl(url: String): Boolean = withContext(Dispatchers.IO) {

@@ -17,6 +17,8 @@ data class CloudRadioDocument(
     val genre: String,
     val description: String,
     val logoUrl: String?,
+    val faviconUrl: String?,
+    val homepageUrl: String?,
     val createdBy: String,
     val status: String,
 )
@@ -30,7 +32,9 @@ fun CloudRadioDocument.toRadioStation(): RadioStation {
         country = country,
         region = composedRegion,
         url = streamUrl,
-        logoUrl = logoUrl,
+        logoUrl = logoUrl?.trim()?.takeIf { it.isNotBlank() },
+        faviconUrl = faviconUrl?.trim()?.takeIf { it.isNotBlank() },
+        homepageUrl = homepageUrl?.trim()?.takeIf { it.isNotBlank() },
         genre = genre,
     )
 }
@@ -46,6 +50,8 @@ fun DocumentSnapshot.toCloudRadioDocumentOrNull(): CloudRadioDocument? {
     val genre = getString("genre") ?: ""
     val description = getString("description") ?: ""
     val logoUrl = getString("logoUrl")
+    val faviconUrl = getString("favicon") ?: getString("faviconUrl")
+    val homepageUrl = getString("homepage") ?: getString("homepageUrl")
     val createdBy = getString("createdBy") ?: ""
     val status = getString("status") ?: STATUS_PENDING
 
@@ -60,6 +66,8 @@ fun DocumentSnapshot.toCloudRadioDocumentOrNull(): CloudRadioDocument? {
         genre = genre,
         description = description,
         logoUrl = logoUrl,
+        faviconUrl = faviconUrl,
+        homepageUrl = homepageUrl,
         createdBy = createdBy,
         status = status,
     )

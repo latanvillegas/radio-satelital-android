@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -25,22 +26,24 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil.compose.AsyncImage
 import com.app.radiosatelital.RadioStation
-import com.app.radiosatelital.ui.resolvedLogoUrl
+import com.app.radiosatelital.ui.RadioCardSizeMode
 import com.app.radiosatelital.ui.locationLabel
 
 @Composable
 fun RadioListItem(
     station: RadioStation,
+    cardSizeMode: RadioCardSizeMode,
     selected: Boolean,
     isFavorite: Boolean,
     onFavoriteClick: () -> Unit,
     onClick: () -> Unit,
 ) {
+    val sizing = rememberRadioItemSizing(cardSizeMode)
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -58,13 +61,14 @@ fun RadioListItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
+                .heightIn(min = sizing.minHeight)
+                .padding(horizontal = sizing.horizontalPadding, vertical = sizing.verticalPadding),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(sizing.contentSpacing),
         ) {
             Box(
                 modifier = Modifier
-                    .size(44.dp)
+                    .size(sizing.logoContainerSize)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center,
@@ -73,39 +77,95 @@ fun RadioListItem(
                     imageVector = Icons.Filled.Radio,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
-                )
-                AsyncImage(
-                    model = station.resolvedLogoUrl(),
-                    contentDescription = "Logo ${station.name}",
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape),
-                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(sizing.logoIconSize),
                 )
             }
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = station.name,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = sizing.titleStyle,
                     fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
                 Text(
                     text = station.locationLabel,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = sizing.subtitleStyle,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
 
-            IconButton(onClick = onFavoriteClick) {
+            IconButton(
+                onClick = onFavoriteClick,
+                modifier = Modifier.size(sizing.favoriteTouchSize),
+            ) {
                 Icon(
                     imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                     contentDescription = if (isFavorite) "Quitar favorito" else "Agregar favorito",
                     tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(sizing.favoriteIconSize),
                 )
             }
         }
     }
 }
+
+@Composable
+private fun rememberRadioItemSizing(mode: RadioCardSizeMode): RadioItemSizing {
+    return when (mode) {
+        RadioCardSizeMode.Compact -> RadioItemSizing(
+            minHeight = 60.dp,
+            horizontalPadding = 12.dp,
+            verticalPadding = 8.dp,
+            contentSpacing = 10.dp,
+            logoContainerSize = 36.dp,
+            logoIconSize = 20.dp,
+            favoriteTouchSize = 40.dp,
+            favoriteIconSize = 20.dp,
+            titleStyle = MaterialTheme.typography.titleSmall,
+            subtitleStyle = MaterialTheme.typography.labelMedium,
+        )
+
+        RadioCardSizeMode.Normal -> RadioItemSizing(
+            minHeight = 68.dp,
+            horizontalPadding = 14.dp,
+            verticalPadding = 12.dp,
+            contentSpacing = 12.dp,
+            logoContainerSize = 44.dp,
+            logoIconSize = 24.dp,
+            favoriteTouchSize = 48.dp,
+            favoriteIconSize = 24.dp,
+            titleStyle = MaterialTheme.typography.titleMedium,
+            subtitleStyle = MaterialTheme.typography.bodySmall,
+        )
+
+        RadioCardSizeMode.Large -> RadioItemSizing(
+            minHeight = 82.dp,
+            horizontalPadding = 16.dp,
+            verticalPadding = 14.dp,
+            contentSpacing = 14.dp,
+            logoContainerSize = 52.dp,
+            logoIconSize = 28.dp,
+            favoriteTouchSize = 54.dp,
+            favoriteIconSize = 26.dp,
+            titleStyle = MaterialTheme.typography.titleLarge,
+            subtitleStyle = MaterialTheme.typography.bodyMedium,
+        )
+    }
+}
+
+private data class RadioItemSizing(
+    val minHeight: androidx.compose.ui.unit.Dp,
+    val horizontalPadding: androidx.compose.ui.unit.Dp,
+    val verticalPadding: androidx.compose.ui.unit.Dp,
+    val contentSpacing: androidx.compose.ui.unit.Dp,
+    val logoContainerSize: androidx.compose.ui.unit.Dp,
+    val logoIconSize: androidx.compose.ui.unit.Dp,
+    val favoriteTouchSize: androidx.compose.ui.unit.Dp,
+    val favoriteIconSize: androidx.compose.ui.unit.Dp,
+    val titleStyle: androidx.compose.ui.text.TextStyle,
+    val subtitleStyle: androidx.compose.ui.text.TextStyle,
+)

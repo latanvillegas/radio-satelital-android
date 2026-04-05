@@ -36,10 +36,10 @@ import com.app.radiosatelital.ui.components.RadioListItem
 @Composable
 fun SearchScreen(
     stations: List<RadioStation>,
+    cardSizeMode: RadioCardSizeMode,
     favorites: Set<Int>,
     onFavoriteClick: (Int) -> Unit,
     onStationSelect: (Int, RadioStation) -> Unit,
-    onClose: () -> Unit,
 ) {
     var searchQuery by remember { mutableStateOf("") }
 
@@ -117,7 +117,13 @@ fun SearchScreen(
                         .fillMaxWidth()
                         .weight(1f)
                         .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(
+                        when (cardSizeMode) {
+                            RadioCardSizeMode.Compact -> 6.dp
+                            RadioCardSizeMode.Normal -> 8.dp
+                            RadioCardSizeMode.Large -> 10.dp
+                        },
+                    ),
                 ) {
                     items(
                         items = filteredStations,
@@ -125,12 +131,12 @@ fun SearchScreen(
                     ) { (index, station) ->
                         RadioListItem(
                             station = station,
+                            cardSizeMode = cardSizeMode,
                             selected = false,
                             isFavorite = favorites.contains(index),
                             onFavoriteClick = { onFavoriteClick(index) },
                             onClick = {
                                 onStationSelect(index, station)
-                                onClose()
                             },
                         )
                     }

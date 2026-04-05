@@ -6,6 +6,8 @@ data class RadioStation(
 	val region: String,
 	val url: String,
 	val logoUrl: String? = null,
+	val faviconUrl: String? = null,
+	val homepageUrl: String? = null,
 	val genre: String = "",
 )
 

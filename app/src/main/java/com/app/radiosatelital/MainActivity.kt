@@ -7,9 +7,10 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.app.radiosatelital.ui.MainScreen
+import com.app.radiosatelital.ui.RadioCardSizeMode
 import com.app.radiosatelital.ui.RadioLayoutMode
 import com.app.radiosatelital.ui.rememberPlaybackCoordinator
 import com.app.radiosatelital.ui.theme.AppThemeMode
@@ -18,19 +19,44 @@ import com.app.radiosatelital.ui.theme.RadioSatelitalTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-    enableEdgeToEdge()
+        enableEdgeToEdge()
         Log.i(TAG_STARTUP, "MainActivity.onCreate: inicio de app")
+
+        val preferences = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+        val savedTheme = preferences.getString(KEY_THEME_MODE, AppThemeMode.PureWhite.name)
+            ?.let { value -> enumValueOrDefault<AppThemeMode>(value, AppThemeMode.PureWhite) }
+            ?: AppThemeMode.PureWhite
+        val savedLayout = preferences.getString(KEY_LAYOUT_MODE, RadioLayoutMode.OneRow.name)
+            ?.let { value -> enumValueOrDefault<RadioLayoutMode>(value, RadioLayoutMode.OneRow) }
+            ?: RadioLayoutMode.OneRow
+        val savedCardSize = preferences.getString(KEY_CARD_SIZE_MODE, RadioCardSizeMode.Normal.name)
+            ?.let { value -> enumValueOrDefault<RadioCardSizeMode>(value, RadioCardSizeMode.Normal) }
+            ?: RadioCardSizeMode.Normal
+
         setContent {
-            var themeMode by rememberSaveable { mutableStateOf(AppThemeMode.PureWhite) }
-            var layoutMode by rememberSaveable { mutableStateOf(RadioLayoutMode.OneRow) }
+            var themeMode by remember { mutableStateOf(savedTheme) }
+            var layoutMode by remember { mutableStateOf(savedLayout) }
+            var cardSizeMode by remember { mutableStateOf(savedCardSize) }
+
             RadioSatelitalTheme(themeMode = themeMode) {
                 val coordinator = rememberPlaybackCoordinator()
                 MainScreen(
                     coordinator = coordinator,
                     themeMode = themeMode,
                     layoutMode = layoutMode,
-                    onThemeChange = { themeMode = it },
-                    onLayoutModeChange = { layoutMode = it },
+                    cardSizeMode = cardSizeMode,
+                    onThemeChange = {
+                        themeMode = it
+                        preferences.edit().putString(KEY_THEME_MODE, it.name).apply()
+                    },
+                    onLayoutModeChange = {
+                        layoutMode = it
+                        preferences.edit().putString(KEY_LAYOUT_MODE, it.name).apply()
+                    },
+                    onCardSizeModeChange = {
+                        cardSizeMode = it
+                        preferences.edit().putString(KEY_CARD_SIZE_MODE, it.name).apply()
+                    },
                 )
             }
         }
@@ -38,5 +64,13 @@ class MainActivity : ComponentActivity() {
 
     private companion object {
         const val TAG_STARTUP = "RADIO_STARTUP"
+        const val PREFS_NAME = "radio_satelital_prefs"
+        const val KEY_THEME_MODE = "theme_mode"
+        const val KEY_LAYOUT_MODE = "layout_mode"
+        const val KEY_CARD_SIZE_MODE = "card_size_mode"
     }
+}
+
+private inline fun <reified T : Enum<T>> enumValueOrDefault(value: String, fallback: T): T {
+    return runCatching { enumValueOf<T>(value) }.getOrElse { fallback }
 }

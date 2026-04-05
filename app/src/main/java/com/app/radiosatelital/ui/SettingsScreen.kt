@@ -32,8 +32,10 @@ import com.app.radiosatelital.ui.theme.AppThemeMode
 fun SettingsScreen(
     currentTheme: AppThemeMode,
     layoutMode: RadioLayoutMode,
+    cardSizeMode: RadioCardSizeMode,
     onThemeChange: (AppThemeMode) -> Unit,
     onLayoutModeChange: (RadioLayoutMode) -> Unit,
+    onCardSizeModeChange: (RadioCardSizeMode) -> Unit,
     onBack: () -> Unit,
 ) {
     Scaffold(
@@ -105,6 +107,34 @@ fun SettingsScreen(
                 selected = layoutMode == RadioLayoutMode.TwoRows,
                 previewColor = MaterialTheme.colorScheme.surfaceVariant,
                 onSelect = { onLayoutModeChange(RadioLayoutMode.TwoRows) },
+            )
+
+            Text(
+                text = "Tamaño de radios",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.primary,
+            )
+
+            ThemeOption(
+                label = RadioCardSizeMode.Compact.label,
+                selected = cardSizeMode == RadioCardSizeMode.Compact,
+                previewColor = MaterialTheme.colorScheme.surface,
+                onSelect = { onCardSizeModeChange(RadioCardSizeMode.Compact) },
+            )
+
+            ThemeOption(
+                label = RadioCardSizeMode.Normal.label,
+                selected = cardSizeMode == RadioCardSizeMode.Normal,
+                previewColor = MaterialTheme.colorScheme.surfaceVariant,
+                onSelect = { onCardSizeModeChange(RadioCardSizeMode.Normal) },
+            )
+
+            ThemeOption(
+                label = RadioCardSizeMode.Large.label,
+                selected = cardSizeMode == RadioCardSizeMode.Large,
+                previewColor = MaterialTheme.colorScheme.surface,
+                onSelect = { onCardSizeModeChange(RadioCardSizeMode.Large) },
             )
 
             Column(

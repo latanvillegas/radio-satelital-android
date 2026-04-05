@@ -26,6 +26,7 @@ private const val ALL_FILTER = "Todos"
 fun CountryExplorerScreen(
     stations: List<RadioStation>,
     selectedStationUrl: String?,
+    cardSizeMode: RadioCardSizeMode,
     favorites: Set<Int>,
     onFavoriteClick: (Int) -> Unit,
     onStationClick: (Int, RadioStation) -> Unit,
@@ -126,7 +127,13 @@ fun CountryExplorerScreen(
 
         LazyColumn(
             modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(
+                when (cardSizeMode) {
+                    RadioCardSizeMode.Compact -> 6.dp
+                    RadioCardSizeMode.Normal -> 8.dp
+                    RadioCardSizeMode.Large -> 10.dp
+                },
+            ),
         ) {
             items(
                 items = filteredStations,
@@ -134,6 +141,7 @@ fun CountryExplorerScreen(
             ) { (index, station) ->
                 RadioListItem(
                     station = station,
+                    cardSizeMode = cardSizeMode,
                     selected = selectedStationUrl == station.url,
                     isFavorite = favorites.contains(index),
                     onFavoriteClick = { onFavoriteClick(index) },
