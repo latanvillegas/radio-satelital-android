@@ -23,4 +23,37 @@ class RadioRepository(context: Context) {
             onError = onError,
         )
     }
+
+    fun adminDefaultEmail(): String = FirebaseRadioDataSource.ADMIN_EMAIL
+
+    fun isAdminSessionActive(): Boolean = dataSource.isAdminSessionActive()
+
+    fun currentUserEmail(): String? = dataSource.currentUserEmail()
+
+    suspend fun signInAdmin(email: String, password: String): Result<Unit> {
+        return dataSource.signInAdmin(email = email, password = password)
+    }
+
+    suspend fun sendAdminPasswordReset(email: String): Result<Unit> {
+        return dataSource.sendAdminPasswordReset(email)
+    }
+
+    fun signOutAdmin() {
+        dataSource.signOutAdmin()
+    }
+
+    fun observePendingRadios(
+        onUpdate: (List<CloudRadioDocument>) -> Unit,
+        onError: (Throwable) -> Unit,
+    ): ListenerRegistration? {
+        return dataSource.observePendingRadios(onUpdate = onUpdate, onError = onError)
+    }
+
+    suspend fun approveSubmittedRadio(radio: CloudRadioDocument): Result<Unit> {
+        return dataSource.approveSubmittedRadio(radio)
+    }
+
+    suspend fun rejectSubmittedRadio(radioId: String): Result<Unit> {
+        return dataSource.rejectSubmittedRadio(radioId)
+    }
 }

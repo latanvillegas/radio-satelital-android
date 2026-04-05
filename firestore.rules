@@ -6,19 +6,25 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isAdmin() {
+      return isSignedIn()
+        && request.auth.token.email == "alv.oficial123@gmail.com";
+    }
+
     // Radios enviadas por usuarios para moderacion
     match /submitted_radios/{radioId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn()
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.status == "pending";
-      allow update, delete: if false;
+      allow update: if isAdmin();
+      allow delete: if false;
     }
 
     // Radios publicas visibles para todos
     match /public_radios/{radioId} {
       allow read: if true;
-      allow create, update, delete: if false;
+      allow create, update, delete: if isAdmin();
     }
   }
 }

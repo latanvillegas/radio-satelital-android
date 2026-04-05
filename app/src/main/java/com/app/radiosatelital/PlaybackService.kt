@@ -109,6 +109,11 @@ class PlaybackService : MediaSessionService() {
             .setAllowCrossProtocolRedirects(true)
             .setConnectTimeoutMs(12_000)
             .setReadTimeoutMs(20_000)
+            .setDefaultRequestProperties(
+                mapOf(
+                    "Icy-MetaData" to "1",
+                ),
+            )
 
         player = androidx.media3.exoplayer.ExoPlayer.Builder(this)
             .setMediaSourceFactory(

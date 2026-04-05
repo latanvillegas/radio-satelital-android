@@ -17,6 +17,7 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.extractor.metadata.icy.IcyInfo
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.app.radiosatelital.PlaybackService
@@ -97,6 +98,10 @@ class PlaybackCoordinator(private val appContext: android.content.Context) {
 
         override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
             updateNowPlayingFromMetadata(mediaMetadata)
+        }
+
+        override fun onMetadata(metadata: androidx.media3.common.Metadata) {
+            updateNowPlayingFromTimedMetadata(metadata)
         }
 
         override fun onPlayerError(error: PlaybackException) {
@@ -287,6 +292,44 @@ class PlaybackCoordinator(private val appContext: android.content.Context) {
             titleRaw = metadata.title?.toString(),
             displayTitleRaw = metadata.displayTitle?.toString(),
         )
+
+        uiState = uiState.copy(
+            nowPlayingArtist = parsed.artist,
+            nowPlayingTitle = parsed.title,
+        )
+
+        val lookupKey = listOf(parsed.artist, parsed.title).joinToString("||")
+        if (lookupKey.isBlank() || lookupKey == lastArtworkLookupKey) return
+        lastArtworkLookupKey = lookupKey
+
+        scope.launch {
+            val artwork = artworkRepository.fetchArtworkIfPossible(parsed.artist, parsed.title)
+            uiState = uiState.copy(
+                artworkUrl = artwork.artworkUrl,
+            )
+        }
+    }
+
+    private fun updateNowPlayingFromTimedMetadata(metadata: androidx.media3.common.Metadata) {
+        var combinedTitle: String? = null
+
+        for (i in 0 until metadata.length()) {
+            val entry = metadata[i]
+            if (entry is IcyInfo && !entry.title.isNullOrBlank()) {
+                combinedTitle = entry.title
+                break
+            }
+        }
+
+        if (combinedTitle.isNullOrBlank()) return
+
+        val parsed = StreamMetadataParser.parse(
+            artistRaw = null,
+            titleRaw = combinedTitle,
+            displayTitleRaw = combinedTitle,
+        )
+
+        if (parsed.artist.isNullOrBlank() && parsed.title.isNullOrBlank()) return
 
         uiState = uiState.copy(
             nowPlayingArtist = parsed.artist,
