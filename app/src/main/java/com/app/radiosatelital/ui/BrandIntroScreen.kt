@@ -10,7 +10,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -26,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -43,27 +47,36 @@ fun BrandIntroScreen(
     val context = LocalContext.current
     val iconScale = remember { Animatable(0.84f) }
     val iconAlpha = remember { Animatable(0f) }
+    val haloScale = remember { Animatable(0.88f) }
+    val haloAlpha = remember { Animatable(0f) }
     val titleAlpha = remember { Animatable(0f) }
     val titleLetterSpacing = remember { Animatable(0.32f) }
+    val lineAlpha = remember { Animatable(0f) }
+    val lineScaleX = remember { Animatable(0.25f) }
     var showGlow by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         playBrandSound(context)
 
-        iconAlpha.animateTo(1f, animationSpec = tween(durationMillis = 240))
+        haloAlpha.animateTo(1f, animationSpec = tween(durationMillis = 220))
+        haloScale.animateTo(1f, animationSpec = tween(durationMillis = 700, easing = FastOutSlowInEasing))
+        iconAlpha.animateTo(1f, animationSpec = tween(durationMillis = 260))
         iconScale.animateTo(
             targetValue = 1f,
-            animationSpec = tween(durationMillis = 420, easing = FastOutSlowInEasing),
+            animationSpec = tween(durationMillis = 620, easing = FastOutSlowInEasing),
         )
 
-        titleAlpha.animateTo(1f, animationSpec = tween(durationMillis = 260))
+        titleAlpha.animateTo(1f, animationSpec = tween(durationMillis = 300))
         titleLetterSpacing.animateTo(
             targetValue = 0.08f,
-            animationSpec = tween(durationMillis = 420, easing = FastOutSlowInEasing),
+            animationSpec = tween(durationMillis = 620, easing = FastOutSlowInEasing),
         )
 
+        lineAlpha.animateTo(1f, animationSpec = tween(durationMillis = 220))
+        lineScaleX.animateTo(1f, animationSpec = tween(durationMillis = 520, easing = FastOutSlowInEasing))
+
         showGlow = true
-        delay(220)
+        delay(260)
         onFinished()
     }
 
@@ -86,33 +99,50 @@ fun BrandIntroScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Box(
-                modifier = Modifier
-                    .size(124.dp)
-                    .scale(iconScale.value)
-                    .alpha(iconAlpha.value)
-                    .background(
-                        color = if (showGlow) Color(0x332EC4B6) else Color(0x223A86FF),
-                        shape = CircleShape,
-                    ),
+                    modifier = Modifier.size(168.dp),
                 contentAlignment = Alignment.Center,
             ) {
+                    Box(
+                        modifier = Modifier
+                            .size(168.dp)
+                            .scale(haloScale.value)
+                            .alpha(haloAlpha.value)
+                            .background(
+                                color = if (showGlow) Color(0x222EC4B6) else Color(0x193A86FF),
+                                shape = CircleShape,
+                            ),
+                    )
                 Icon(
                     imageVector = Icons.Filled.Radio,
                     contentDescription = null,
-                    tint = Color(0xFFF1FAFF),
-                    modifier = Modifier.size(72.dp),
+                        tint = Color(0xFFF1FAFF),
+                        modifier = Modifier
+                            .size(78.dp)
+                            .scale(iconScale.value)
+                            .alpha(iconAlpha.value),
                 )
             }
 
-            Text(
-                text = "RADIO SATELITAL",
-                modifier = Modifier.alpha(titleAlpha.value),
-                style = TextStyle(
-                    color = Color(0xFFF1FAFF),
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = titleLetterSpacing.value.em,
-                ),
-            )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "RADIO SATELITAL",
+                        modifier = Modifier.alpha(titleAlpha.value),
+                        style = TextStyle(
+                            color = Color(0xFFF1FAFF),
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = titleLetterSpacing.value.em,
+                        ),
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(0.36f)
+                            .height(2.dp)
+                            .scale(lineScaleX.value, 1f)
+                            .alpha(lineAlpha.value)
+                            .background(Color(0xFF2EC4B6), CircleShape),
+                    )
+                }
         }
     }
 }
@@ -123,10 +153,10 @@ private suspend fun playBrandSound(context: Context) {
 
     val tone = ToneGenerator(AudioManager.STREAM_MUSIC, 68)
     runCatching {
-        tone.startTone(ToneGenerator.TONE_PROP_BEEP, 120)
-        delay(90)
-        tone.startTone(ToneGenerator.TONE_PROP_BEEP2, 180)
-        delay(120)
+        tone.startTone(ToneGenerator.TONE_PROP_BEEP, 70)
+        delay(80)
+        tone.startTone(ToneGenerator.TONE_PROP_BEEP2, 95)
+        delay(100)
     }
     tone.release()
 }
