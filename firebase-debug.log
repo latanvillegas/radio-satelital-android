@@ -96,3 +96,41 @@
 [info] 
 [info] 3. Paste or enter the authorization code below once you have it:
 [info] 
+[debug] [2026-04-05T22:51:19.475Z] ----------------------------------------------------------------------
+[debug] [2026-04-05T22:51:19.478Z] Command:       /usr/bin/node /usr/local/bin/firebase login --no-localhost
+[debug] [2026-04-05T22:51:19.479Z] CLI Version:   13.35.1
+[debug] [2026-04-05T22:51:19.479Z] Platform:      linux
+[debug] [2026-04-05T22:51:19.479Z] Node Version:  v18.19.1
+[debug] [2026-04-05T22:51:19.498Z] Time:          Sun Apr 05 2026 22:51:19 GMT+0000 (Coordinated Universal Time)
+[debug] [2026-04-05T22:51:19.498Z] Env Overrides: GITHUB_API_URL, GITHUB_API_URL
+[debug] [2026-04-05T22:51:19.498Z] ----------------------------------------------------------------------
+[debug] 
+[info] i  Firebase optionally collects CLI and Emulator Suite usage and error reporting information to help improve our products. Data is collected in accordance with Google's privacy policy (https://policies.google.com/privacy) and is not used to identify you.
+ 
+[info] i  To change your data collection preference at any time, run `firebase logout` and log in again. 
+[debug] [2026-04-05T22:51:52.085Z] >>> [apiv2][query] POST https://auth.firebase.tools/attest [none]
+[debug] [2026-04-05T22:51:52.085Z] >>> [apiv2][body] POST https://auth.firebase.tools/attest {"session_id":"996dd515-7521-40bc-87e7-586fa0c425b2"}
+[debug] [2026-04-05T22:51:52.413Z] <<< [apiv2][status] POST https://auth.firebase.tools/attest 200
+[debug] [2026-04-05T22:51:52.413Z] <<< [apiv2][body] POST https://auth.firebase.tools/attest {"token":"ceHd48yIYzS5F15ZIB4IOBZSNUQ0Dp8kA4k8JtHJm8E"}
+[info] 
+[info] To sign in to the Firebase CLI:
+[info] 
+[info] 1. Take note of your session ID:
+[info] 
+[info]    996DD
+[info] 
+[info] 2. Visit the URL below on any device and follow the instructions to get your code:
+[info] 
+[info]    https://auth.firebase.tools/login?code_challenge=_Unfsi7N_v4uo2-n746Tehvfcm9o5aGpGDwZHJKD3b0&session=996dd515-7521-40bc-87e7-586fa0c425b2&attest=ceHd48yIYzS5F15ZIB4IOBZSNUQ0Dp8kA4k8JtHJm8E
+[info] 
+[info] 3. Paste or enter the authorization code below once you have it:
+[info] 
+[debug] [2026-04-05T22:54:31.315Z] Error: setRawMode EIO
+    at ReadStream.setRawMode (node:tty:77:31)
+    at [_setRawMode] [as _setRawMode] (node:internal/readline/interface:381:18)
+    at Interface.close (node:internal/readline/interface:531:24)
+    at ReadStream.ontermend (node:internal/readline/interface:267:10)
+    at ReadStream.emit (node:events:529:35)
+    at ReadStream.emit (node:domain:489:12)
+    at endReadableNT (node:internal/streams/readable:1400:12)
+    at process.processTicksAndRejections (node:internal/process/task_queues:82:21)
