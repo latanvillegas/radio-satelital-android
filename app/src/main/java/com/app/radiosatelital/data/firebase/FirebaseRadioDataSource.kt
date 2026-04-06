@@ -80,7 +80,9 @@ class FirebaseRadioDataSource(private val context: Context) {
         }
 
         if (!email.equals(adminEmail, ignoreCase = true)) {
-            return Result.failure(IllegalArgumentException("Credenciales de administrador invalidas"))
+            return Result.failure(
+                IllegalArgumentException("No eres administrador. Usa el correo de administrador")
+            )
         }
 
         if (password.isBlank()) {
