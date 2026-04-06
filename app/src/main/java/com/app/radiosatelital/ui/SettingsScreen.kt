@@ -20,6 +20,7 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -33,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.font.FontWeight
@@ -56,6 +58,15 @@ fun SettingsScreen(
     val adminState = adminViewModel.uiState
     var adminEmailInput by remember(adminState.adminEmail) { mutableStateOf(adminState.adminEmail) }
     var adminPasswordInput by remember { mutableStateOf("") }
+    val trimmedAdminEmail = adminEmailInput.trim()
+    val emailHasFormat = trimmedAdminEmail.contains("@") && trimmedAdminEmail.contains(".")
+    val adminEmailError = when {
+        trimmedAdminEmail.isBlank() -> "Ingresa el correo administrador"
+        !emailHasFormat -> "Formato de correo invalido"
+        else -> null
+    }
+    val adminPasswordError = if (adminPasswordInput.isBlank()) "Ingresa la contrasena" else null
+    val canLoginAdmin = !adminState.isBusy && adminEmailError == null && adminPasswordError == null
 
     Scaffold(
         topBar = {
@@ -183,12 +194,23 @@ fun SettingsScreen(
             )
 
             if (!adminState.isAdminLoggedIn) {
+                if (adminState.isBusy) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
+
                 OutlinedTextField(
                     value = adminEmailInput,
                     onValueChange = { adminEmailInput = it },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Correo administrador") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    isError = adminEmailError != null,
+                    supportingText = {
+                        if (adminEmailError != null) {
+                            Text(adminEmailError)
+                        }
+                    },
+                    enabled = !adminState.isBusy,
                     singleLine = true,
                 )
 
@@ -198,6 +220,13 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Contrasena") },
                     visualTransformation = PasswordVisualTransformation(),
+                    isError = adminPasswordError != null,
+                    supportingText = {
+                        if (adminPasswordError != null) {
+                            Text(adminPasswordError)
+                        }
+                    },
+                    enabled = !adminState.isBusy,
                     singleLine = true,
                 )
 
@@ -208,18 +237,18 @@ fun SettingsScreen(
                     Button(
                         onClick = {
                             adminViewModel.loginAsAdmin(
-                                email = adminEmailInput,
+                                email = trimmedAdminEmail,
                                 password = adminPasswordInput,
                             )
                         },
-                        enabled = !adminState.isBusy,
+                        enabled = canLoginAdmin,
                     ) {
                         Text(if (adminState.isBusy) "Ingresando..." else "Ingresar")
                     }
 
                     TextButton(
-                        onClick = { adminViewModel.sendPasswordReset(adminEmailInput) },
-                        enabled = !adminState.isBusy,
+                        onClick = { adminViewModel.sendPasswordReset(trimmedAdminEmail) },
+                        enabled = !adminState.isBusy && adminEmailError == null,
                     ) {
                         Text("Restablecer clave")
                     }
@@ -266,7 +295,11 @@ fun SettingsScreen(
                 Text(
                     text = adminState.infoMessage.orEmpty(),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (adminState.infoMessage.startsWith("No se pudo")) {
+                        Color(0xFFB3261E)
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
                 )
             }
         }

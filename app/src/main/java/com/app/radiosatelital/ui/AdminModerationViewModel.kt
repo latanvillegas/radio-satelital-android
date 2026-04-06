@@ -8,6 +8,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.app.radiosatelital.data.firebase.CloudRadioDocument
 import com.app.radiosatelital.data.firebase.RadioRepository
+import com.google.firebase.FirebaseNetworkException
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.launch
 
@@ -58,7 +61,7 @@ class AdminModerationViewModel(application: Application) : AndroidViewModel(appl
                         isBusy = false,
                         isAdminLoggedIn = false,
                         currentUserEmail = repository.currentUserEmail(),
-                        infoMessage = "No se pudo iniciar sesion: ${it.message ?: "error"}",
+                        infoMessage = mapAdminLoginError(it),
                     )
                 }
         }
@@ -150,5 +153,30 @@ class AdminModerationViewModel(application: Application) : AndroidViewModel(appl
         pendingListener?.remove()
         pendingListener = null
         super.onCleared()
+    }
+
+    private fun mapAdminLoginError(error: Throwable): String {
+        val detail = error.message.orEmpty()
+        return when {
+            detail.contains("No eres administrador", ignoreCase = true) -> {
+                "No se pudo iniciar sesion: No eres administrador"
+            }
+            detail.contains("Falta ADMIN_EMAIL", ignoreCase = true) -> {
+                "No se pudo iniciar sesion: Falta configurar correo administrador"
+            }
+            detail.contains("contrasena", ignoreCase = true) -> {
+                "No se pudo iniciar sesion: Ingresa la contrasena"
+            }
+            error is FirebaseAuthInvalidUserException -> {
+                "No se pudo iniciar sesion: El usuario no existe en Firebase Auth"
+            }
+            error is FirebaseAuthInvalidCredentialsException -> {
+                "No se pudo iniciar sesion: Contrasena incorrecta o credencial invalida"
+            }
+            error is FirebaseNetworkException -> {
+                "No se pudo iniciar sesion: Sin conexion a internet"
+            }
+            else -> "No se pudo iniciar sesion: ${error.message ?: "error"}"
+        }
     }
 }
