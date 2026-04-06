@@ -1,6 +1,6 @@
 # Radio Satelital Android
 
-[Version en espanol](README.md)
+[Versión en español](README.md)
 
 [![Android](https://img.shields.io/badge/Android-34-3DDC84?logo=android&logoColor=white)](https://developer.android.com)
 [![Kotlin](https://img.shields.io/badge/Kotlin-1.9-0095D5?logo=kotlin&logoColor=white)](https://kotlinlang.org)
@@ -9,86 +9,49 @@
 
 Native Android app (Kotlin + Jetpack Compose) to listen to radio stations, browse by country, and manage community-submitted stations.
 
-## App type
+## Value proposition
 
-Radio Satelital is an internet radio application.
-It lets users play live stations, browse radios by location, and manage user-submitted stations.
+Radio Satelital helps users quickly discover real stations by country, region, and city, with smooth playback and a clean experience from first launch.
+
+## Project status
+
+- Current status: Active (v1.0)
+- Phase: Early production with continuous improvements
+- Platform: Android
+
+## Main features
+
+- Live radio playback with background service support.
+- Discovery by country, region, city, and continent.
+- Fast station search.
+- Dedicated player screen with clear controls.
+- Community station submission flow.
+- Moderation tools for submitted stations in admin mode.
+- Theme and visual layout settings inside the app.
+
+## Features matrix
+
+| Feature | Available | Notes |
+|---|---|---|
+| Live playback | Yes | Powered by Media3 ExoPlayer |
+| Station search | Yes | Quick filtering by name |
+| Discovery by location | Yes | Country, region, city, continent |
+| Community station submissions | Yes | Pending moderation workflow |
+| Admin moderation | Yes | Approve or reject submissions |
+| Theme and layout settings | Yes | Configurable from Settings |
+| Synced favorites | No (roadmap) | Planned for upcoming iteration |
+
+## Use cases
+
+- Listen to local stations from a specific city.
+- Discover new stations by country or continent.
+- Submit a missing station for moderation.
+- Manage community catalog updates in admin mode.
 
 ## App version
 
 - Current version: 1.0
 - Version code: 1
-
-## Technical stack
-
-- Kotlin
-- Jetpack Compose + Navigation
-- Media3 ExoPlayer
-- Firebase Authentication
-- Firebase Firestore
-
-## Requirements
-
-- Android Studio (recent version)
-- JDK 17
-- Android SDK 34
-- Gradle Wrapper included in this repository
-
-## Firebase setup
-
-1. Create (or open) a project in Firebase Console.
-2. Register an Android app with this package name: `com.app.radiosatelital`.
-3. Download `google-services.json`.
-4. Copy the file to `app/google-services.json`.
-5. In Firebase Console, enable:
-   - Authentication (Anonymous and/or Email/Password)
-   - Firestore Database
-
-Important:
-- `google-services.json` should not be committed to a public repository.
-- Admin email must be configured as a local Gradle property, not in source code.
-
-### Local admin email setup
-
-To keep admin access from Settings without exposing your email in Git, define `ADMIN_EMAIL` in a non-versioned local file.
-
-Recommended option (global on your machine):
-
-File: `~/.gradle/gradle.properties`
-
-```properties
-ADMIN_EMAIL=your-admin-email@domain.com
-```
-
-Project option (also non-versioned):
-
-File: `local.properties`
-
-```properties
-ADMIN_EMAIL=your-admin-email@domain.com
-```
-
-## Build and run
-
-From the project root:
-
-```bash
-./gradlew :app:assembleDebug
-```
-
-To install on a connected device/emulator:
-
-```bash
-./gradlew :app:installDebug
-```
-
-You can also open the project in Android Studio and run the `app` configuration.
-
-## Main structure
-
-- `app/src/main/java/com/app/radiosatelital/ui`: screens and UI state
-- `app/src/main/java/com/app/radiosatelital/data`: data access (Firebase, repositories, artwork)
-- `app/src/main/java/com/app/radiosatelital`: main activity, playback service, and base models
 
 ## Screenshots
 
@@ -110,6 +73,8 @@ Example block:
 ![Moderation](URL_OR_IMAGE_PATH)
 ```
 
+Recommendation: replace placeholders with 3 to 5 real screenshots before public release.
+
 ## Architecture and data flow
 
 Quick summary:
@@ -127,6 +92,49 @@ General flow:
 4. Result goes back to the ViewModel and updates UI state.
 5. For audio playback, the service keeps playback independent from screen lifecycle.
 
+## Roadmap
+
+- Favorites and personal collections.
+- Recent listening history.
+- Improved streaming metadata handling.
+- Basic playback telemetry (opt-in).
+- Better bulk moderation UX.
+
+## For developers
+
+### Technical stack
+
+- Kotlin
+- Jetpack Compose + Navigation
+- Media3 ExoPlayer
+- Firebase Authentication
+- Firebase Firestore
+
+### Requirements
+
+- Android Studio (recent version)
+- JDK 17
+- Android SDK 34
+- Gradle Wrapper included in this repository
+
+### Minimal setup
+
+1. Configure Firebase for Android app `com.app.radiosatelital`.
+2. Place `google-services.json` in `app/google-services.json`.
+3. Define `ADMIN_EMAIL` in a local Gradle property (`~/.gradle/gradle.properties` or `local.properties`).
+
+### Quick build
+
+```bash
+./gradlew :app:assembleDebug
+```
+
+### Main structure
+
+- `app/src/main/java/com/app/radiosatelital/ui`: screens and UI state.
+- `app/src/main/java/com/app/radiosatelital/data`: data access (Firebase, repositories, artwork).
+- `app/src/main/java/com/app/radiosatelital`: main activity, playback service, and base models.
+
 ## Troubleshooting
 
 - Google Services error:
@@ -136,6 +144,27 @@ General flow:
 - Java build error:
   - Confirm the project is using JDK 17.
 
+## FAQ
+
+1. I cannot sign in as admin. What should I check first?
+Make sure `ADMIN_EMAIL` is defined locally and the user exists in Firebase Authentication with Email/Password enabled.
+
+2. Can the app be used without an account?
+Yes. The app supports anonymous authentication for public flows.
+
+3. How do I recover admin access if I forgot the password?
+Use reset password from the app or from Firebase Authentication console.
+
+4. What if a station does not play?
+Check connectivity, stream availability, and provider-supported format.
+
+## Security
+
+- Do not commit `google-services.json`.
+- Do not hardcode emails, passwords, or API keys in source code.
+- Use local properties for sensitive settings (`ADMIN_EMAIL`).
+- Rotate Firebase credentials if there was previous exposure.
+
 ## How to contribute
 
 1. Open an issue to report bugs or propose improvements.
@@ -144,10 +173,22 @@ General flow:
 4. Verify the app builds with `./gradlew :app:assembleDebug`.
 5. Open a Pull Request with scope, changes, and evidence.
 
+Recommended PR checklist:
+
+- [ ] Debug build passes.
+- [ ] Scope and risk clearly described.
+- [ ] Screenshots included for UI changes.
+- [ ] No secrets or credentials in changes.
+
 ## Rights reserved
 
 This project uses a proprietary license with all rights reserved.
 See terms in `LICENSE`.
+
+## Support and contact
+
+- Main support channel: repository Issues.
+- For collaboration or sponsorship support: open an issue with contact context.
 
 ## Support the creator
 
