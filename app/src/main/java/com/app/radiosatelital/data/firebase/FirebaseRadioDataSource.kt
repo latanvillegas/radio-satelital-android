@@ -14,7 +14,6 @@ class FirebaseRadioDataSource(private val context: Context) {
 
     companion object {
         const val ADMIN_EMAIL = "alv.oficial123@gmail.com"
-        private const val ADMIN_PASSWORD = "Avelinopas26"
     }
 
     suspend fun ensureAnonymousAuth(): Result<String> {
@@ -70,12 +69,12 @@ class FirebaseRadioDataSource(private val context: Context) {
         val auth = authOrNull()
             ?: return Result.failure(IllegalStateException("Firebase no esta configurado"))
 
-        if (!email.equals(ADMIN_EMAIL, ignoreCase = true) || password != ADMIN_PASSWORD) {
+        if (!email.equals(ADMIN_EMAIL, ignoreCase = true)) {
             return Result.failure(IllegalArgumentException("Credenciales de administrador invalidas"))
         }
 
         return runCatching {
-            auth.signInWithEmailAndPassword(ADMIN_EMAIL, ADMIN_PASSWORD).await()
+            auth.signInWithEmailAndPassword(email.trim(), password).await()
             Unit
         }
     }

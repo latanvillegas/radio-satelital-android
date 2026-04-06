@@ -14,3 +14,7 @@
 *.jks
 *.keystore
 android-sdk/
+
+# Firebase (archivo local con credenciales del proyecto)
+google-services.json
+app/google-services.json
