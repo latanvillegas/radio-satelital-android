@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.app.radiosatelital.data.firebase.CloudRadioDocument
 import com.app.radiosatelital.data.firebase.RadioRepository
 import com.google.firebase.FirebaseNetworkException
+import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.firestore.ListenerRegistration
@@ -172,6 +173,23 @@ class AdminModerationViewModel(application: Application) : AndroidViewModel(appl
             }
             error is FirebaseAuthInvalidCredentialsException -> {
                 "No se pudo iniciar sesion: Contrasena incorrecta o credencial invalida"
+            }
+            error is FirebaseAuthException -> {
+                when (error.errorCode) {
+                    "ERROR_WRONG_PASSWORD" -> {
+                        "No se pudo iniciar sesion: Contrasena incorrecta"
+                    }
+                    "ERROR_USER_NOT_FOUND" -> {
+                        "No se pudo iniciar sesion: Usuario no encontrado"
+                    }
+                    "ERROR_INVALID_EMAIL" -> {
+                        "No se pudo iniciar sesion: Correo invalido"
+                    }
+                    "ERROR_TOO_MANY_REQUESTS" -> {
+                        "No se pudo iniciar sesion: Demasiados intentos. Intenta mas tarde"
+                    }
+                    else -> "No se pudo iniciar sesion: ${error.message ?: "error"}"
+                }
             }
             error is FirebaseNetworkException -> {
                 "No se pudo iniciar sesion: Sin conexion a internet"

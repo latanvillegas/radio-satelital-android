@@ -23,6 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -32,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.app.radiosatelital.RadioStation
@@ -79,18 +81,25 @@ fun MineRadiosScreen(
 ) {
     var editingIndex by remember { mutableStateOf<Int?>(null) }
     var showEditor by remember { mutableStateOf(false) }
+    var checkingIndex by remember { mutableStateOf<Int?>(null) }
+    var checkResultMessage by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
 
     BackHandler(enabled = showEditor) {
         showEditor = false
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background,
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -117,6 +126,21 @@ fun MineRadiosScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+
+        if (!checkResultMessage.isNullOrBlank()) {
+            val isError = checkResultMessage.orEmpty().startsWith("Enlace caido")
+            Text(
+                text = checkResultMessage.orEmpty(),
+                style = MaterialTheme.typography.bodySmall,
+                color = if (isError) MaterialTheme.colorScheme.error else Color(0xFF2E7D32),
+            )
+        }
+
+        Text(
+            text = "Si una radio se cae, edita su URL de streaming para corregirla y enviarla a moderacion.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
 
         if (stations.isEmpty()) {
             Text(
@@ -151,18 +175,38 @@ fun MineRadiosScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
-                                TextButton(onClick = {
-                                    val catalog = stations.map { it.toRadioStation() }
-                                    onPlayStation(catalog, index)
-                                }) {
-                                    Text("Reproducir")
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    TextButton(
+                                        onClick = {
+                                            scope.launch {
+                                                checkingIndex = index
+                                                val isValid = validateStreamingUrl(station.streamUrl)
+                                                checkingIndex = null
+                                                checkResultMessage = if (isValid) {
+                                                    "Enlace activo: ${station.name}"
+                                                } else {
+                                                    "Enlace caido o no reproducible: ${station.name}"
+                                                }
+                                            }
+                                        },
+                                        enabled = checkingIndex == null,
+                                    ) {
+                                        Text(if (checkingIndex == index) "Probando..." else "Probar enlace")
+                                    }
+
+                                    TextButton(onClick = {
+                                        val catalog = stations.map { it.toRadioStation() }
+                                        onPlayStation(catalog, index)
+                                    }) {
+                                        Text("Reproducir")
+                                    }
                                 }
                                 Row {
                                     IconButton(onClick = {
                                         editingIndex = index
                                         showEditor = true
                                     }) {
-                                        Icon(Icons.Filled.Edit, contentDescription = "Editar")
+                                        Icon(Icons.Filled.Edit, contentDescription = "Corregir enlace")
                                     }
                                     IconButton(onClick = { onDeleteStation(index) }) {
                                         Icon(Icons.Filled.Delete, contentDescription = "Eliminar")
@@ -173,6 +217,7 @@ fun MineRadiosScreen(
                     }
                 }
             }
+        }
         }
     }
 

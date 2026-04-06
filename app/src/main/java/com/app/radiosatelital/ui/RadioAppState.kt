@@ -357,7 +357,7 @@ class PlaybackCoordinator(private val appContext: android.content.Context) {
 
 private fun RadioStation.toMediaItem(index: Int): MediaItem {
     val resolvedUrl = resolvePlayableStreamUrl(url)
-    val mediaId = url
+    val mediaId = index.toString()
     Log.i("RADIO_CTRL", "toMediaItem(): station=$name rawUrl=$url resolvedUrl=$resolvedUrl mediaId=$mediaId index=$index")
     val guessedMimeType = when {
         resolvedUrl.contains(".m3u8", ignoreCase = true) -> MimeTypes.APPLICATION_M3U8

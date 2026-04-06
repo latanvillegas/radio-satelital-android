@@ -32,11 +32,13 @@ class MainActivity : ComponentActivity() {
         val savedCardSize = preferences.getString(KEY_CARD_SIZE_MODE, RadioCardSizeMode.Normal.name)
             ?.let { value -> enumValueOrDefault<RadioCardSizeMode>(value, RadioCardSizeMode.Normal) }
             ?: RadioCardSizeMode.Normal
+        val savedAnimationsEnabled = preferences.getBoolean(KEY_ANIMATIONS_ENABLED, true)
 
         setContent {
             var themeMode by remember { mutableStateOf(savedTheme) }
             var layoutMode by remember { mutableStateOf(savedLayout) }
             var cardSizeMode by remember { mutableStateOf(savedCardSize) }
+            var animationsEnabled by remember { mutableStateOf(savedAnimationsEnabled) }
 
             RadioSatelitalTheme(themeMode = themeMode) {
                 val coordinator = rememberPlaybackCoordinator()
@@ -45,6 +47,7 @@ class MainActivity : ComponentActivity() {
                     themeMode = themeMode,
                     layoutMode = layoutMode,
                     cardSizeMode = cardSizeMode,
+                    animationsEnabled = animationsEnabled,
                     onThemeChange = {
                         themeMode = it
                         preferences.edit().putString(KEY_THEME_MODE, it.name).apply()
@@ -57,6 +60,22 @@ class MainActivity : ComponentActivity() {
                         cardSizeMode = it
                         preferences.edit().putString(KEY_CARD_SIZE_MODE, it.name).apply()
                     },
+                    onAnimationsEnabledChange = {
+                        animationsEnabled = it
+                        preferences.edit().putBoolean(KEY_ANIMATIONS_ENABLED, it).apply()
+                    },
+                    onResetAppearance = {
+                        themeMode = AppThemeMode.PureWhite
+                        layoutMode = RadioLayoutMode.OneRow
+                        cardSizeMode = RadioCardSizeMode.Normal
+                        animationsEnabled = true
+                        preferences.edit()
+                            .putString(KEY_THEME_MODE, AppThemeMode.PureWhite.name)
+                            .putString(KEY_LAYOUT_MODE, RadioLayoutMode.OneRow.name)
+                            .putString(KEY_CARD_SIZE_MODE, RadioCardSizeMode.Normal.name)
+                            .putBoolean(KEY_ANIMATIONS_ENABLED, true)
+                            .apply()
+                    },
                 )
             }
         }
@@ -68,6 +87,7 @@ class MainActivity : ComponentActivity() {
         const val KEY_THEME_MODE = "theme_mode"
         const val KEY_LAYOUT_MODE = "layout_mode"
         const val KEY_CARD_SIZE_MODE = "card_size_mode"
+        const val KEY_ANIMATIONS_ENABLED = "animations_enabled"
     }
 }
 

@@ -64,9 +64,12 @@ fun MainScreen(
     themeMode: AppThemeMode,
     layoutMode: RadioLayoutMode,
     cardSizeMode: RadioCardSizeMode,
+    animationsEnabled: Boolean,
     onThemeChange: (AppThemeMode) -> Unit,
     onLayoutModeChange: (RadioLayoutMode) -> Unit,
     onCardSizeModeChange: (RadioCardSizeMode) -> Unit,
+    onAnimationsEnabledChange: (Boolean) -> Unit,
+    onResetAppearance: () -> Unit,
 ) {
     val context = LocalContext.current
     val appVersion = remember(context) {
@@ -95,6 +98,7 @@ fun MainScreen(
                 navController = navController,
                 coordinator = coordinator,
                 uiState = uiState,
+                animationsEnabled = animationsEnabled,
                 layoutMode = layoutMode,
                 cardSizeMode = cardSizeMode,
                 baseCatalog = baseCatalog,
@@ -127,9 +131,12 @@ fun MainScreen(
                 currentTheme = themeMode,
                 layoutMode = layoutMode,
                 cardSizeMode = cardSizeMode,
+                animationsEnabled = animationsEnabled,
                 onThemeChange = onThemeChange,
                 onLayoutModeChange = onLayoutModeChange,
                 onCardSizeModeChange = onCardSizeModeChange,
+                onAnimationsEnabledChange = onAnimationsEnabledChange,
+                onResetAppearance = onResetAppearance,
                 onBack = { navController.navigateUp() },
             )
         }
@@ -157,6 +164,8 @@ fun MainScreen(
                         cloudViewModel.submitUserRadio(station)
                     } else if (editIndex in userStations.indices) {
                         userStations[editIndex] = station
+                        // Cuando un usuario corrige un enlace caido, también se envia a moderacion.
+                        cloudViewModel.submitUserRadio(station)
                     }
                 },
                 onDeleteStation = { index ->
@@ -195,6 +204,7 @@ private fun HomeRootScreen(
     navController: NavHostController,
     coordinator: PlaybackCoordinator,
     uiState: RadioUiState,
+    animationsEnabled: Boolean,
     layoutMode: RadioLayoutMode,
     cardSizeMode: RadioCardSizeMode,
     baseCatalog: List<RadioStation>,
@@ -205,7 +215,11 @@ private fun HomeRootScreen(
 ) {
     val context = LocalContext.current
     val drawerState = rememberDrawerState(DrawerValue.Closed)
-    val topBarScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    val topBarScrollBehavior = if (animationsEnabled) {
+        TopAppBarDefaults.enterAlwaysScrollBehavior()
+    } else {
+        TopAppBarDefaults.pinnedScrollBehavior()
+    }
     val isSmallScreen = LocalConfiguration.current.screenWidthDp < 360
     var showExitConfirm by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()

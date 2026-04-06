@@ -45,10 +45,13 @@ fun PlayerScreen(
     onVolumeChange: (Float) -> Unit,
 ) {
     val station = uiState.selectedStation ?: return
+    val backgroundColor = MaterialTheme.colorScheme.background
+    val contentColor = MaterialTheme.colorScheme.onBackground
+    val accentColor = MaterialTheme.colorScheme.primary
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = Color(0xFF0F4C81),
+        color = backgroundColor,
     ) {
         Column(
             modifier = Modifier
@@ -62,13 +65,13 @@ fun PlayerScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver", tint = Color.White)
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver", tint = contentColor)
                 }
                 IconButton(onClick = onFavoriteClick) {
                     Icon(
                         if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
                         contentDescription = "Favorito",
-                        tint = Color.White,
+                        tint = contentColor,
                     )
                 }
             }
@@ -82,21 +85,21 @@ fun PlayerScreen(
                     modifier = Modifier
                         .size(220.dp)
                         .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.18f)),
+                        .background(accentColor.copy(alpha = 0.22f)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Filled.Radio, contentDescription = null, tint = Color.White, modifier = Modifier.size(90.dp))
+                    Icon(Icons.Filled.Radio, contentDescription = null, tint = contentColor, modifier = Modifier.size(90.dp))
                 }
                 Text(
                     text = station.name,
                     style = MaterialTheme.typography.headlineMedium,
-                    color = Color.White,
+                    color = contentColor,
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
                     text = station.locationLabel,
                     style = MaterialTheme.typography.titleMedium,
-                    color = Color.White.copy(alpha = 0.92f),
+                    color = contentColor.copy(alpha = 0.92f),
                 )
                 val nowPlayingText = when {
                     !uiState.nowPlayingArtist.isNullOrBlank() && !uiState.nowPlayingTitle.isNullOrBlank() -> {
@@ -108,7 +111,7 @@ fun PlayerScreen(
                 Text(
                     text = nowPlayingText,
                     style = MaterialTheme.typography.bodyLarge,
-                    color = Color.White.copy(alpha = 0.92f),
+                    color = contentColor.copy(alpha = 0.92f),
                 )
             }
 
@@ -119,7 +122,7 @@ fun PlayerScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     IconButton(onClick = onPrevious) {
-                        Icon(Icons.Filled.SkipPrevious, contentDescription = "Anterior", tint = Color.White)
+                        Icon(Icons.Filled.SkipPrevious, contentDescription = "Anterior", tint = contentColor)
                     }
                     IconButton(onClick = onPlayPause, modifier = Modifier.size(74.dp)) {
                         Icon(
@@ -129,12 +132,12 @@ fun PlayerScreen(
                                 Icons.Filled.PlayCircle
                             },
                             contentDescription = "PlayPause",
-                            tint = Color.White,
+                            tint = contentColor,
                             modifier = Modifier.size(62.dp),
                         )
                     }
                     IconButton(onClick = onNext) {
-                        Icon(Icons.Filled.SkipNext, contentDescription = "Siguiente", tint = Color.White)
+                        Icon(Icons.Filled.SkipNext, contentDescription = "Siguiente", tint = contentColor)
                     }
                 }
 
