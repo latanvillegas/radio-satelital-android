@@ -27,7 +27,7 @@ class AdminModerationViewModel(application: Application) : AndroidViewModel(appl
 
     var uiState by mutableStateOf(
         AdminModerationUiState(
-        adminEmail = "",
+        adminEmail = repository.adminDefaultEmail(),
         isAdminLoggedIn = repository.isAdminSessionActive(),
         currentUserEmail = repository.currentUserEmail(),
     )

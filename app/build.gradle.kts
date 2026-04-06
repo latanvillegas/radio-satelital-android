@@ -4,6 +4,8 @@ plugins {
 	id("com.google.gms.google-services")
 }
 
+val adminEmail = providers.gradleProperty("ADMIN_EMAIL").orNull?.trim().orEmpty()
+
 android {
 	namespace = "com.app.radiosatelital"
 	compileSdk = 34
@@ -14,6 +16,7 @@ android {
 		targetSdk = 34
 		versionCode = 1
 		versionName = "1.0"
+		buildConfigField("String", "ADMIN_EMAIL", "\"$adminEmail\"")
 
 		testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 	}
@@ -30,6 +33,7 @@ android {
 
 	buildFeatures {
 		compose = true
+		buildConfig = true
 	}
 
 	composeOptions {

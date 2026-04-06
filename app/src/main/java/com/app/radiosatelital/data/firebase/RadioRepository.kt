@@ -24,7 +24,7 @@ class RadioRepository(context: Context) {
         )
     }
 
-    fun adminDefaultEmail(): String = FirebaseRadioDataSource.ADMIN_EMAIL
+    fun adminDefaultEmail(): String = dataSource.adminConfiguredEmail()
 
     fun isAdminSessionActive(): Boolean = dataSource.isAdminSessionActive()
 

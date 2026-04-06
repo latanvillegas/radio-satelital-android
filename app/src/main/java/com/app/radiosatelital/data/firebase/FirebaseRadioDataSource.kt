@@ -1,6 +1,7 @@
 package com.app.radiosatelital.data.firebase
 
 import android.content.Context
+import com.app.radiosatelital.BuildConfig
 import com.app.radiosatelital.ui.UserRadioStation
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
@@ -12,10 +13,7 @@ import kotlinx.coroutines.tasks.await
 
 class FirebaseRadioDataSource(private val context: Context) {
 
-    companion object {
-        const val ADMIN_EMAIL = "alv.oficial123@gmail.com"
-        private const val ADMIN_PASSWORD = "Avelinopas26"
-    }
+    fun adminConfiguredEmail(): String = BuildConfig.ADMIN_EMAIL.trim()
 
     suspend fun ensureAnonymousAuth(): Result<String> {
         val auth = authOrNull()
@@ -58,7 +56,9 @@ class FirebaseRadioDataSource(private val context: Context) {
 
     fun isAdminSessionActive(): Boolean {
         val auth = authOrNull() ?: return false
-        return auth.currentUser?.email.equals(ADMIN_EMAIL, ignoreCase = true)
+        val adminEmail = adminConfiguredEmail()
+        if (adminEmail.isBlank()) return false
+        return auth.currentUser?.email.equals(adminEmail, ignoreCase = true)
     }
 
     fun currentUserEmail(): String? {
@@ -69,24 +69,26 @@ class FirebaseRadioDataSource(private val context: Context) {
     suspend fun signInAdmin(email: String, password: String): Result<Unit> {
         val auth = authOrNull()
             ?: return Result.failure(IllegalStateException("Firebase no esta configurado"))
+        val adminEmail = adminConfiguredEmail()
 
-        if (!email.equals(ADMIN_EMAIL, ignoreCase = true) || password != ADMIN_PASSWORD) {
+        if (adminEmail.isBlank()) {
+            return Result.failure(
+                IllegalStateException(
+                    "Falta ADMIN_EMAIL. Configuralo como propiedad Gradle local para habilitar acceso admin.",
+                ),
+            )
+        }
+
+        if (!email.equals(adminEmail, ignoreCase = true)) {
             return Result.failure(IllegalArgumentException("Credenciales de administrador invalidas"))
         }
 
+        if (password.isBlank()) {
+            return Result.failure(IllegalArgumentException("La contrasena es obligatoria"))
+        }
+
         return runCatching {
-            auth.signInWithEmailAndPassword(ADMIN_EMAIL, ADMIN_PASSWORD).await()
-            Unit
-        }.recoverCatching { signInError ->
-            val msg = signInError.message.orEmpty().lowercase()
-            val looksLikeMissingUser =
-                msg.contains("user-not-found") ||
-                    msg.contains("no user record") ||
-                    msg.contains("there is no user")
-
-            if (!looksLikeMissingUser) throw signInError
-
-            auth.createUserWithEmailAndPassword(ADMIN_EMAIL, ADMIN_PASSWORD).await()
+            auth.signInWithEmailAndPassword(email.trim(), password).await()
             Unit
         }
     }
@@ -94,13 +96,22 @@ class FirebaseRadioDataSource(private val context: Context) {
     suspend fun sendAdminPasswordReset(email: String): Result<Unit> {
         val auth = authOrNull()
             ?: return Result.failure(IllegalStateException("Firebase no esta configurado"))
+        val adminEmail = adminConfiguredEmail()
 
-        if (!email.equals(ADMIN_EMAIL, ignoreCase = true)) {
+        if (adminEmail.isBlank()) {
+            return Result.failure(
+                IllegalStateException(
+                    "Falta ADMIN_EMAIL. Configuralo como propiedad Gradle local para restablecer clave.",
+                ),
+            )
+        }
+
+        if (!email.equals(adminEmail, ignoreCase = true)) {
             return Result.failure(IllegalArgumentException("Solo el correo administrador puede restablecerse"))
         }
 
         return runCatching {
-            auth.sendPasswordResetEmail(ADMIN_EMAIL).await()
+            auth.sendPasswordResetEmail(adminEmail).await()
             Unit
         }
     }
