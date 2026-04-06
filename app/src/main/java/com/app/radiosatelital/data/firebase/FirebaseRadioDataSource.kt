@@ -76,6 +76,7 @@ class FirebaseRadioDataSource(private val context: Context) {
 
         return runCatching {
             auth.signInWithEmailAndPassword(ADMIN_EMAIL, ADMIN_PASSWORD).await()
+            Unit
         }.recoverCatching { signInError ->
             val msg = signInError.message.orEmpty().lowercase()
             val looksLikeMissingUser =
