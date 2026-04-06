@@ -1,6 +1,9 @@
 package com.app.radiosatelital.ui
 
 import android.app.Application
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.app.radiosatelital.data.firebase.CloudRadioDocument
@@ -22,10 +25,12 @@ class AdminModerationViewModel(application: Application) : AndroidViewModel(appl
     private val repository = RadioRepository(application.applicationContext)
     private var pendingListener: ListenerRegistration? = null
 
-    var uiState = AdminModerationUiState(
+    var uiState by mutableStateOf(
+        AdminModerationUiState(
         adminEmail = "",
         isAdminLoggedIn = repository.isAdminSessionActive(),
         currentUserEmail = repository.currentUserEmail(),
+    )
     )
         private set
 
