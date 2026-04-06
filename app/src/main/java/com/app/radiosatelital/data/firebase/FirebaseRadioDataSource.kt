@@ -10,10 +10,11 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.tasks.await
+import java.util.Locale
 
 class FirebaseRadioDataSource(private val context: Context) {
 
-    fun adminConfiguredEmail(): String = BuildConfig.ADMIN_EMAIL.trim()
+    fun adminConfiguredEmail(): String = normalizeEmail(BuildConfig.ADMIN_EMAIL)
 
     suspend fun ensureAnonymousAuth(): Result<String> {
         val auth = authOrNull()
@@ -58,7 +59,8 @@ class FirebaseRadioDataSource(private val context: Context) {
         val auth = authOrNull() ?: return false
         val adminEmail = adminConfiguredEmail()
         if (adminEmail.isBlank()) return false
-        return auth.currentUser?.email.equals(adminEmail, ignoreCase = true)
+        val currentEmail = normalizeEmail(auth.currentUser?.email)
+        return currentEmail == adminEmail
     }
 
     fun currentUserEmail(): String? {
@@ -70,6 +72,7 @@ class FirebaseRadioDataSource(private val context: Context) {
         val auth = authOrNull()
             ?: return Result.failure(IllegalStateException("Firebase no esta configurado"))
         val adminEmail = adminConfiguredEmail()
+        val normalizedInputEmail = normalizeEmail(email)
 
         if (adminEmail.isBlank()) {
             return Result.failure(
@@ -79,7 +82,7 @@ class FirebaseRadioDataSource(private val context: Context) {
             )
         }
 
-        if (!email.equals(adminEmail, ignoreCase = true)) {
+        if (normalizedInputEmail != adminEmail) {
             return Result.failure(
                 IllegalArgumentException("No eres administrador. Usa el correo de administrador")
             )
@@ -90,7 +93,7 @@ class FirebaseRadioDataSource(private val context: Context) {
         }
 
         return runCatching {
-            auth.signInWithEmailAndPassword(email.trim(), password).await()
+            auth.signInWithEmailAndPassword(normalizedInputEmail, password).await()
             Unit
         }
     }
@@ -99,6 +102,7 @@ class FirebaseRadioDataSource(private val context: Context) {
         val auth = authOrNull()
             ?: return Result.failure(IllegalStateException("Firebase no esta configurado"))
         val adminEmail = adminConfiguredEmail()
+        val normalizedInputEmail = normalizeEmail(email)
 
         if (adminEmail.isBlank()) {
             return Result.failure(
@@ -108,7 +112,7 @@ class FirebaseRadioDataSource(private val context: Context) {
             )
         }
 
-        if (!email.equals(adminEmail, ignoreCase = true)) {
+        if (normalizedInputEmail != adminEmail) {
             return Result.failure(IllegalArgumentException("Solo el correo administrador puede restablecerse"))
         }
 
@@ -116,6 +120,11 @@ class FirebaseRadioDataSource(private val context: Context) {
             auth.sendPasswordResetEmail(adminEmail).await()
             Unit
         }
+    }
+
+    private fun normalizeEmail(raw: String?): String {
+        val trimmed = raw.orEmpty().trim().trim('"')
+        return trimmed.lowercase(Locale.ROOT)
     }
 
     fun signOutAdmin() {
