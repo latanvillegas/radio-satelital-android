@@ -19,19 +19,28 @@ import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
 
 @Composable
 fun PlayerScreen(
@@ -41,13 +50,32 @@ fun PlayerScreen(
     onFavoriteClick: () -> Unit,
     onPrevious: () -> Unit,
     onPlayPause: () -> Unit,
+    onRetry: () -> Unit,
     onNext: () -> Unit,
     onVolumeChange: (Float) -> Unit,
+    onDataSaverToggle: (Boolean) -> Unit,
 ) {
     val station = uiState.selectedStation ?: return
     val backgroundColor = MaterialTheme.colorScheme.background
     val contentColor = MaterialTheme.colorScheme.onBackground
     val accentColor = MaterialTheme.colorScheme.primary
+    val isLoading = uiState.playbackState is RadioPlaybackState.Loading
+    val isError = uiState.playbackState is RadioPlaybackState.Error
+    val statusLabel = when (uiState.playbackState) {
+        is RadioPlaybackState.Playing -> "En vivo"
+        is RadioPlaybackState.Loading -> "Conectando..."
+        is RadioPlaybackState.Error -> "Error"
+        is RadioPlaybackState.Paused -> "Pausado"
+        is RadioPlaybackState.Selected -> "Lista"
+        is RadioPlaybackState.NoneSelected -> "Sin radio"
+    }
+    var stationChangeMessage by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(station.url) {
+        stationChangeMessage = "Reproduciendo: ${station.name}"
+        delay(1800)
+        stationChangeMessage = null
+    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -88,7 +116,15 @@ fun PlayerScreen(
                         .background(accentColor.copy(alpha = 0.22f)),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.Filled.Radio, contentDescription = null, tint = contentColor, modifier = Modifier.size(90.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(170.dp)
+                            .clip(CircleShape)
+                            .background(accentColor.copy(alpha = 0.18f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(Icons.Filled.Radio, contentDescription = null, tint = contentColor, modifier = Modifier.size(90.dp))
+                    }
                 }
                 Text(
                     text = station.name,
@@ -101,6 +137,21 @@ fun PlayerScreen(
                     style = MaterialTheme.typography.titleMedium,
                     color = contentColor.copy(alpha = 0.92f),
                 )
+                Text(
+                    text = statusLabel,
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (isError) MaterialTheme.colorScheme.error else accentColor,
+                    fontWeight = FontWeight.SemiBold,
+                )
+
+                if (!stationChangeMessage.isNullOrBlank()) {
+                    Text(
+                        text = stationChangeMessage.orEmpty(),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = accentColor,
+                    )
+                }
+
                 val nowPlayingText = when {
                     !uiState.nowPlayingArtist.isNullOrBlank() && !uiState.nowPlayingTitle.isNullOrBlank() -> {
                         "${uiState.nowPlayingArtist} · ${uiState.nowPlayingTitle}"
@@ -113,6 +164,47 @@ fun PlayerScreen(
                     style = MaterialTheme.typography.bodyLarge,
                     color = contentColor.copy(alpha = 0.92f),
                 )
+
+                if (isLoading) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                        Text(
+                            text = "Conectando stream...",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+
+                if (isError) {
+                    Text(
+                        text = uiState.errorMessage ?: "No se pudo reproducir la emisora",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                    Button(onClick = onRetry) {
+                        Text("Reintentar")
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "Ahorro de datos",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Switch(
+                        checked = uiState.dataSaverMode,
+                        onCheckedChange = onDataSaverToggle,
+                    )
+                }
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -121,8 +213,8 @@ fun PlayerScreen(
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    IconButton(onClick = onPrevious) {
-                        Icon(Icons.Filled.SkipPrevious, contentDescription = "Anterior", tint = contentColor)
+                    IconButton(onClick = onPrevious, enabled = !isLoading) {
+                        Icon(Icons.Filled.SkipPrevious, contentDescription = "Radio anterior", tint = contentColor)
                     }
                     IconButton(onClick = onPlayPause, modifier = Modifier.size(74.dp)) {
                         Icon(
@@ -131,13 +223,17 @@ fun PlayerScreen(
                             } else {
                                 Icons.Filled.PlayCircle
                             },
-                            contentDescription = "PlayPause",
+                            contentDescription = if (uiState.playbackState is RadioPlaybackState.Playing) {
+                                "Pausar reproducción"
+                            } else {
+                                "Reanudar reproducción"
+                            },
                             tint = contentColor,
                             modifier = Modifier.size(62.dp),
                         )
                     }
-                    IconButton(onClick = onNext) {
-                        Icon(Icons.Filled.SkipNext, contentDescription = "Siguiente", tint = contentColor)
+                    IconButton(onClick = onNext, enabled = !isLoading) {
+                        Icon(Icons.Filled.SkipNext, contentDescription = "Radio siguiente", tint = contentColor)
                     }
                 }
 
@@ -145,6 +241,11 @@ fun PlayerScreen(
                     value = uiState.volume,
                     onValueChange = onVolumeChange,
                     modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    text = "Volumen ${(uiState.volume * 100f).toInt()}%",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }

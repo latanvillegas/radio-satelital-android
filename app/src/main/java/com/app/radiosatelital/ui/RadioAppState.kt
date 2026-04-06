@@ -58,6 +58,7 @@ data class RadioUiState(
     val nowPlayingArtist: String? = null,
     val nowPlayingTitle: String? = null,
     val artworkUrl: String? = null,
+    val dataSaverMode: Boolean = false,
 )
 
 class PlaybackCoordinator(private val appContext: android.content.Context) {
@@ -111,10 +112,8 @@ class PlaybackCoordinator(private val appContext: android.content.Context) {
                 error,
             )
             uiState = uiState.copy(
-                playbackState = RadioPlaybackState.Error(
-                    error.message ?: "No se pudo reproducir la emisora",
-                ),
-                errorMessage = error.message ?: "No se pudo reproducir la emisora",
+                playbackState = RadioPlaybackState.Error(mapPlaybackError(error)),
+                errorMessage = mapPlaybackError(error),
             )
         }
     }
@@ -210,6 +209,25 @@ class PlaybackCoordinator(private val appContext: android.content.Context) {
         controller?.seekToNextMediaItem()
     }
 
+    fun retryCurrentStation() {
+        ensureConnected()
+        val currentIndex = uiState.selectedStationId?.toIntOrNull()
+        val currentStation = currentIndex?.let { activeCatalog.getOrNull(it) } ?: uiState.selectedStation
+
+        if (currentIndex != null && currentStation != null) {
+            playInternal(currentIndex, currentStation, activeCatalog)
+        } else {
+            controller?.play()
+        }
+    }
+
+    fun setDataSaverMode(enabled: Boolean) {
+        uiState = uiState.copy(
+            dataSaverMode = enabled,
+            artworkUrl = if (enabled) null else uiState.artworkUrl,
+        )
+    }
+
     fun setVolume(value: Float) {
         val safe = value.coerceIn(0f, 1f)
         controller?.volume = safe
@@ -298,6 +316,11 @@ class PlaybackCoordinator(private val appContext: android.content.Context) {
             nowPlayingTitle = parsed.title,
         )
 
+        if (uiState.dataSaverMode) {
+            uiState = uiState.copy(artworkUrl = null)
+            return
+        }
+
         val lookupKey = listOf(parsed.artist, parsed.title).joinToString("||")
         if (lookupKey.isBlank() || lookupKey == lastArtworkLookupKey) return
         lastArtworkLookupKey = lookupKey
@@ -336,6 +359,11 @@ class PlaybackCoordinator(private val appContext: android.content.Context) {
             nowPlayingTitle = parsed.title,
         )
 
+        if (uiState.dataSaverMode) {
+            uiState = uiState.copy(artworkUrl = null)
+            return
+        }
+
         val lookupKey = listOf(parsed.artist, parsed.title).joinToString("||")
         if (lookupKey.isBlank() || lookupKey == lastArtworkLookupKey) return
         lastArtworkLookupKey = lookupKey
@@ -351,6 +379,22 @@ class PlaybackCoordinator(private val appContext: android.content.Context) {
     private fun ensureConnected() {
         if (controller == null && controllerFuture == null) {
             connect()
+        }
+    }
+
+    private fun mapPlaybackError(error: PlaybackException): String {
+        val message = error.message.orEmpty().lowercase()
+        return when {
+            message.contains("unable to connect") || message.contains("network") -> {
+                "Sin internet o conexion inestable"
+            }
+            message.contains("source") || message.contains("404") || message.contains("403") -> {
+                "El stream de esta radio no esta disponible"
+            }
+            message.contains("decoder") || message.contains("format") || message.contains("mime") -> {
+                "Formato de audio no soportado"
+            }
+            else -> "No se pudo reproducir la emisora"
         }
     }
 }

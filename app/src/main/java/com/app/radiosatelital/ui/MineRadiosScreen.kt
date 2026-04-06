@@ -8,7 +8,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.Alignment
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -19,6 +20,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -29,6 +31,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -56,6 +59,12 @@ data class UserRadioStation(
     val logoUrl: String,
 )
 
+private enum class LinkCheckStatus {
+    Unknown,
+    Active,
+    Down,
+}
+
 fun UserRadioStation.toRadioStation(): RadioStation {
     val location = listOf(region, city).filter { it.isNotBlank() }.joinToString(" · ")
     val sanitizedLogo = sanitizeUserProvidedLogoUrl(logoUrl)
@@ -79,11 +88,40 @@ fun MineRadiosScreen(
     onSaveStation: (UserRadioStation, Int?) -> Unit,
     onDeleteStation: (Int) -> Unit,
 ) {
+    val filterAll = "Todas"
+    val filterActive = "Activas"
+    val filterDown = "Caidas"
+    val filterUnknown = "Sin probar"
+
     var editingIndex by remember { mutableStateOf<Int?>(null) }
     var showEditor by remember { mutableStateOf(false) }
     var checkingIndex by remember { mutableStateOf<Int?>(null) }
     var checkResultMessage by remember { mutableStateOf<String?>(null) }
+    var localSaveMessage by remember { mutableStateOf<String?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedStatusFilter by remember { mutableStateOf(filterAll) }
+    var deleteIndexPending by remember { mutableStateOf<Int?>(null) }
+    val linkStatusByUrl = remember { mutableStateMapOf<String, LinkCheckStatus>() }
     val scope = rememberCoroutineScope()
+
+    val filteredStations = stations.mapIndexed { index, station -> index to station }
+        .filter { (_, station) ->
+            val status = linkStatusByUrl[station.streamUrl] ?: LinkCheckStatus.Unknown
+            val matchesStatus = when (selectedStatusFilter) {
+                filterActive -> status == LinkCheckStatus.Active
+                filterDown -> status == LinkCheckStatus.Down
+                filterUnknown -> status == LinkCheckStatus.Unknown
+                else -> true
+            }
+            val query = searchQuery.trim()
+            val matchesSearch = query.isBlank() || listOf(
+                station.name,
+                station.country,
+                station.region,
+                station.city,
+            ).any { value -> value.contains(query, ignoreCase = true) }
+            matchesStatus && matchesSearch
+        }
 
     BackHandler(enabled = showEditor) {
         showEditor = false
@@ -136,15 +174,47 @@ fun MineRadiosScreen(
             )
         }
 
+        if (!localSaveMessage.isNullOrBlank()) {
+            Text(
+                text = localSaveMessage.orEmpty(),
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF2E7D32),
+            )
+        }
+
         Text(
             text = "Si una radio se cae, edita su URL de streaming para corregirla y enviarla a moderacion.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Buscar en Mis radios") },
+            singleLine = true,
+        )
+
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(listOf(filterAll, filterActive, filterDown, filterUnknown)) { option ->
+                FilterChip(
+                    selected = selectedStatusFilter == option,
+                    onClick = { selectedStatusFilter = option },
+                    label = { Text(option) },
+                )
+            }
+        }
+
         if (stations.isEmpty()) {
             Text(
                 text = "Aun no agregaste radios personales",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else if (filteredStations.isEmpty()) {
+            Text(
+                text = "No hay radios para el filtro actual",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -155,7 +225,10 @@ fun MineRadiosScreen(
                     .weight(1f),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                itemsIndexed(stations) { index, station ->
+                items(
+                    items = filteredStations,
+                    key = { (index, _) -> index },
+                ) { (index, station) ->
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     ) {
@@ -166,6 +239,31 @@ fun MineRadiosScreen(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             Text(text = station.name, style = MaterialTheme.typography.titleMedium)
+                            val linkStatus = linkStatusByUrl[station.streamUrl] ?: LinkCheckStatus.Unknown
+                            Surface(
+                                color = when (linkStatus) {
+                                    LinkCheckStatus.Active -> Color(0xFF2E7D32).copy(alpha = 0.12f)
+                                    LinkCheckStatus.Down -> MaterialTheme.colorScheme.error.copy(alpha = 0.12f)
+                                    LinkCheckStatus.Unknown -> MaterialTheme.colorScheme.surfaceVariant
+                                },
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(999.dp),
+                            ) {
+                                Text(
+                                    text = when (linkStatus) {
+                                        LinkCheckStatus.Active -> "Activa"
+                                        LinkCheckStatus.Down -> "Caida"
+                                        LinkCheckStatus.Unknown -> "Sin probar"
+                                    },
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = when (linkStatus) {
+                                        LinkCheckStatus.Active -> Color(0xFF2E7D32)
+                                        LinkCheckStatus.Down -> MaterialTheme.colorScheme.error
+                                        LinkCheckStatus.Unknown -> MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                            }
                             Text(
                                 text = "${station.country} · ${station.region}",
                                 style = MaterialTheme.typography.bodySmall,
@@ -182,6 +280,11 @@ fun MineRadiosScreen(
                                                 checkingIndex = index
                                                 val isValid = validateStreamingUrl(station.streamUrl)
                                                 checkingIndex = null
+                                                linkStatusByUrl[station.streamUrl] = if (isValid) {
+                                                    LinkCheckStatus.Active
+                                                } else {
+                                                    LinkCheckStatus.Down
+                                                }
                                                 checkResultMessage = if (isValid) {
                                                     "Enlace activo: ${station.name}"
                                                 } else {
@@ -208,7 +311,7 @@ fun MineRadiosScreen(
                                     }) {
                                         Icon(Icons.Filled.Edit, contentDescription = "Corregir enlace")
                                     }
-                                    IconButton(onClick = { onDeleteStation(index) }) {
+                                    IconButton(onClick = { deleteIndexPending = index }) {
                                         Icon(Icons.Filled.Delete, contentDescription = "Eliminar")
                                     }
                                 }
@@ -226,8 +329,41 @@ fun MineRadiosScreen(
             initial = editingIndex?.let { stations[it] },
             onDismiss = { showEditor = false },
             onSave = { station ->
+                val oldUrl = editingIndex?.let { index -> stations.getOrNull(index)?.streamUrl }
                 onSaveStation(station, editingIndex)
+                if (oldUrl != null && oldUrl != station.streamUrl) {
+                    linkStatusByUrl.remove(oldUrl)
+                }
+                linkStatusByUrl[station.streamUrl] = LinkCheckStatus.Unknown
+                localSaveMessage = if (editingIndex == null) {
+                    "Guardado local y enviado a moderacion"
+                } else {
+                    "Cambios guardados localmente y enviados a moderacion"
+                }
                 showEditor = false
+            },
+        )
+    }
+
+    if (deleteIndexPending != null) {
+        val pendingIndex = deleteIndexPending ?: -1
+        val pendingName = stations.getOrNull(pendingIndex)?.name.orEmpty()
+        AlertDialog(
+            onDismissRequest = { deleteIndexPending = null },
+            title = { Text("Eliminar radio") },
+            text = { Text("¿Seguro que deseas eliminar \"$pendingName\"?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onDeleteStation(pendingIndex)
+                    deleteIndexPending = null
+                }) {
+                    Text("Eliminar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteIndexPending = null }) {
+                    Text("Cancelar")
+                }
             },
         )
     }

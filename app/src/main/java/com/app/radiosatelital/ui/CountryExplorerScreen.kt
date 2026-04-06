@@ -5,11 +5,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -20,7 +24,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.app.radiosatelital.RadioStation
 import com.app.radiosatelital.ui.components.RadioListItem
@@ -91,6 +98,16 @@ fun CountryExplorerScreen(
         matchesCity && matchesSearch
     }
 
+    val isSearching = searchQuery.isNotBlank()
+
+    val groupedSearchStations = if (isSearching) {
+        filteredStations
+            .groupBy { (_, station) -> cityFromRegion(station.region) ?: "Sin ciudad" }
+            .toSortedMap()
+    } else {
+        emptyMap()
+    }
+
     val activeRoute = listOf(selectedContinent, selectedRegion, selectedCountry, selectedCity)
         .filter { it != ALL_FILTER }
         .joinToString(" > ")
@@ -113,16 +130,18 @@ fun CountryExplorerScreen(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                 )
-                Text(
-                    text = "Ruta activa: $activeRoute",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = "Mostrando ${filteredStations.size} de ${indexedStations.size} radios",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                if (!isSearching) {
+                    Text(
+                        text = "Ruta activa: $activeRoute",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = "Mostrando ${filteredStations.size} de ${indexedStations.size} radios",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
@@ -132,61 +151,67 @@ fun CountryExplorerScreen(
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = {
-                        selectedContinent = ALL_FILTER
-                        selectedRegion = ALL_FILTER
-                        selectedCountry = ALL_FILTER
-                        selectedCity = ALL_FILTER
-                        searchQuery = ""
+                        if (isSearching) {
+                            searchQuery = ""
+                        } else {
+                            selectedContinent = ALL_FILTER
+                            selectedRegion = ALL_FILTER
+                            selectedCountry = ALL_FILTER
+                            selectedCity = ALL_FILTER
+                            searchQuery = ""
+                        }
                     }) {
-                        Text("Limpiar filtros")
+                        Text(if (isSearching) "Limpiar búsqueda" else "Limpiar filtros")
                     }
                 }
             }
         }
 
-        FilterSection(
-            title = "Continente",
-            count = continentOptions.count { it != ALL_FILTER },
-            options = continentOptions,
-            selected = selectedContinent,
-            onSelected = {
-                selectedContinent = it
-                selectedRegion = ALL_FILTER
-                selectedCountry = ALL_FILTER
-                selectedCity = ALL_FILTER
-            },
-        )
+        if (!isSearching) {
+            FilterSection(
+                title = "Continente",
+                count = continentOptions.count { it != ALL_FILTER },
+                options = continentOptions,
+                selected = selectedContinent,
+                onSelected = {
+                    selectedContinent = it
+                    selectedRegion = ALL_FILTER
+                    selectedCountry = ALL_FILTER
+                    selectedCity = ALL_FILTER
+                },
+            )
 
-        FilterSection(
-            title = "Region",
-            count = regionOptions.count { it != ALL_FILTER },
-            options = regionOptions,
-            selected = selectedRegion,
-            onSelected = {
-                selectedRegion = it
-                selectedCountry = ALL_FILTER
-                selectedCity = ALL_FILTER
-            },
-        )
+            FilterSection(
+                title = "Region",
+                count = regionOptions.count { it != ALL_FILTER },
+                options = regionOptions,
+                selected = selectedRegion,
+                onSelected = {
+                    selectedRegion = it
+                    selectedCountry = ALL_FILTER
+                    selectedCity = ALL_FILTER
+                },
+            )
 
-        FilterSection(
-            title = "Pais",
-            count = countryOptions.count { it != ALL_FILTER },
-            options = countryOptions,
-            selected = selectedCountry,
-            onSelected = {
-                selectedCountry = it
-                selectedCity = ALL_FILTER
-            },
-        )
+            FilterSection(
+                title = "Pais",
+                count = countryOptions.count { it != ALL_FILTER },
+                options = countryOptions,
+                selected = selectedCountry,
+                onSelected = {
+                    selectedCountry = it
+                    selectedCity = ALL_FILTER
+                },
+            )
 
-        FilterSection(
-            title = "Ciudad",
-            count = cityOptions.count { it != ALL_FILTER },
-            options = cityOptions,
-            selected = selectedCity,
-            onSelected = { selectedCity = it },
-        )
+            FilterSection(
+                title = "Ciudad",
+                count = cityOptions.count { it != ALL_FILTER },
+                options = cityOptions,
+                selected = selectedCity,
+                onSelected = { selectedCity = it },
+            )
+        }
 
         if (filteredStations.isEmpty()) {
             Surface(
@@ -223,23 +248,130 @@ fun CountryExplorerScreen(
                     },
                 ),
             ) {
-                items(
-                    items = filteredStations,
-                    key = { (index, _) -> index },
-                ) { (index, station) ->
-                    RadioListItem(
-                        station = station,
-                        cardSizeMode = cardSizeMode,
-                        selected = selectedStationUrl == station.url,
-                        isFavorite = false,
-                        onFavoriteClick = {},
-                        showFavoriteAction = false,
-                        onClick = { onStationClick(index, station) },
-                    )
+                if (isSearching) {
+                    items(
+                        items = groupedSearchStations.entries.toList(),
+                        key = { entry -> entry.key },
+                    ) { entry ->
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+                        ) {
+                            Text(
+                                text = "${entry.key} (${entry.value.size})",
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            entry.value.forEach { (index, station) ->
+                                CountrySearchRadioItem(
+                                    station = station,
+                                    selected = selectedStationUrl == station.url,
+                                    searchQuery = searchQuery,
+                                    onClick = { onStationClick(index, station) },
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    items(
+                        items = filteredStations,
+                        key = { (index, _) -> index },
+                    ) { (index, station) ->
+                        RadioListItem(
+                            station = station,
+                            cardSizeMode = cardSizeMode,
+                            selected = selectedStationUrl == station.url,
+                            isFavorite = false,
+                            onFavoriteClick = {},
+                            showFavoriteAction = false,
+                            onClick = { onStationClick(index, station) },
+                        )
+                    }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun CountrySearchRadioItem(
+    station: RadioStation,
+    selected: Boolean,
+    searchQuery: String,
+    onClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp)
+            .clickable(onClick = onClick),
+        color = if (selected) {
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
+        } else {
+            MaterialTheme.colorScheme.surface
+        },
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Radio,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = highlightedText(station.name, searchQuery),
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = highlightedText(station.locationLabel, searchQuery),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun highlightedText(text: String, query: String) = buildAnnotatedString {
+    if (query.isBlank()) {
+        append(text)
+        return@buildAnnotatedString
+    }
+    val source = text
+    val target = query.trim()
+    val start = source.indexOf(target, ignoreCase = true)
+    if (start < 0) {
+        append(source)
+        return@buildAnnotatedString
+    }
+    val end = (start + target.length).coerceAtMost(source.length)
+    append(source.substring(0, start))
+    pushStyle(
+        SpanStyle(
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold,
+        ),
+    )
+    append(source.substring(start, end))
+    pop()
+    append(source.substring(end))
 }
 
 @Composable

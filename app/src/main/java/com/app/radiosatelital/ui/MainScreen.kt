@@ -191,8 +191,10 @@ fun MainScreen(
                 },
                 onPrevious = coordinator::previous,
                 onPlayPause = coordinator::togglePlayback,
+                onRetry = coordinator::retryCurrentStation,
                 onNext = coordinator::next,
                 onVolumeChange = coordinator::setVolume,
+                onDataSaverToggle = coordinator::setDataSaverMode,
             )
         }
     }
@@ -332,7 +334,7 @@ private fun HomeRootScreen(
                         HomeTab.Favorites -> baseCatalog.indices.filter { favorites.contains(it) }
                         HomeTab.Mine -> emptyList()
                         HomeTab.Country -> emptyList()
-                    }
+                    }.sortedBy { baseCatalog[it].name.lowercase() }
 
                     val verticalSpacing = when (cardSizeMode) {
                         RadioCardSizeMode.Compact -> 6.dp
