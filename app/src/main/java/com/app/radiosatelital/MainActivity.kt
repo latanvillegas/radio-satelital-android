@@ -9,6 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.app.radiosatelital.ui.BrandIntroScreen
 import com.app.radiosatelital.ui.MainScreen
 import com.app.radiosatelital.ui.RadioCardSizeMode
 import com.app.radiosatelital.ui.RadioLayoutMode
@@ -35,6 +36,13 @@ class MainActivity : ComponentActivity() {
         val savedAnimationsEnabled = preferences.getBoolean(KEY_ANIMATIONS_ENABLED, true)
 
         setContent {
+            var introFinished by remember { mutableStateOf(false) }
+
+            if (!introFinished) {
+                BrandIntroScreen(onFinished = { introFinished = true })
+                return@setContent
+            }
+
             var themeMode by remember { mutableStateOf(savedTheme) }
             var layoutMode by remember { mutableStateOf(savedLayout) }
             var cardSizeMode by remember { mutableStateOf(savedCardSize) }
