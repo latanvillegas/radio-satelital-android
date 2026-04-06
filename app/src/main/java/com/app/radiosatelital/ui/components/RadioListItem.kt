@@ -41,6 +41,7 @@ fun RadioListItem(
     isFavorite: Boolean,
     onFavoriteClick: () -> Unit,
     onClick: () -> Unit,
+    showFavoriteAction: Boolean = true,
 ) {
     val sizing = rememberRadioItemSizing(cardSizeMode)
 
@@ -98,16 +99,18 @@ fun RadioListItem(
                 )
             }
 
-            IconButton(
-                onClick = onFavoriteClick,
-                modifier = Modifier.size(sizing.favoriteTouchSize),
-            ) {
-                Icon(
-                    imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
-                    contentDescription = if (isFavorite) "Quitar favorito" else "Agregar favorito",
-                    tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(sizing.favoriteIconSize),
-                )
+            if (showFavoriteAction) {
+                IconButton(
+                    onClick = onFavoriteClick,
+                    modifier = Modifier.size(sizing.favoriteTouchSize),
+                ) {
+                    Icon(
+                        imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder,
+                        contentDescription = if (isFavorite) "Quitar favorito" else "Agregar favorito",
+                        tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(sizing.favoriteIconSize),
+                    )
+                }
             }
         }
     }

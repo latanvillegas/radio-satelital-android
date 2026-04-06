@@ -2,13 +2,17 @@ package com.app.radiosatelital.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -16,9 +20,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.app.radiosatelital.RadioStation
 import com.app.radiosatelital.ui.components.RadioListItem
+import com.app.radiosatelital.ui.locationLabel
 
 private const val ALL_FILTER = "Todos"
 
@@ -27,8 +33,6 @@ fun CountryExplorerScreen(
     stations: List<RadioStation>,
     selectedStationUrl: String?,
     cardSizeMode: RadioCardSizeMode,
-    favorites: Set<Int>,
-    onFavoriteClick: (Int) -> Unit,
     onStationClick: (Int, RadioStation) -> Unit,
 ) {
     val indexedStations = remember(stations) { stations.mapIndexed { index, station -> index to station } }
@@ -37,6 +41,7 @@ fun CountryExplorerScreen(
     var selectedRegion by remember { mutableStateOf(ALL_FILTER) }
     var selectedCountry by remember { mutableStateOf(ALL_FILTER) }
     var selectedCity by remember { mutableStateOf(ALL_FILTER) }
+    var searchQuery by remember { mutableStateOf("") }
 
     val continentOptions = buildList {
         add(ALL_FILTER)
@@ -81,12 +86,67 @@ fun CountryExplorerScreen(
     if (selectedCity !in cityOptions) selectedCity = ALL_FILTER
 
     val filteredStations = countryFiltered.filter { (_, station) ->
-        selectedCity == ALL_FILTER || cityFromRegion(station.region) == selectedCity
+        val matchesCity = selectedCity == ALL_FILTER || cityFromRegion(station.region) == selectedCity
+        val matchesSearch = searchQuery.isBlank() || stationMatchesSearch(station, searchQuery)
+        matchesCity && matchesSearch
     }
 
+    val activeRoute = listOf(selectedContinent, selectedRegion, selectedCountry, selectedCity)
+        .filter { it != ALL_FILTER }
+        .joinToString(" > ")
+        .ifBlank { "Todos" }
+
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = "País",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = "Ruta activa: $activeRoute",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = "Mostrando ${filteredStations.size} de ${indexedStations.size} radios",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Buscar radio o ciudad") },
+                    singleLine = true,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(onClick = {
+                        selectedContinent = ALL_FILTER
+                        selectedRegion = ALL_FILTER
+                        selectedCountry = ALL_FILTER
+                        selectedCity = ALL_FILTER
+                        searchQuery = ""
+                    }) {
+                        Text("Limpiar filtros")
+                    }
+                }
+            }
+        }
+
         FilterSection(
             title = "Continente",
+            count = continentOptions.count { it != ALL_FILTER },
             options = continentOptions,
             selected = selectedContinent,
             onSelected = {
@@ -99,6 +159,7 @@ fun CountryExplorerScreen(
 
         FilterSection(
             title = "Region",
+            count = regionOptions.count { it != ALL_FILTER },
             options = regionOptions,
             selected = selectedRegion,
             onSelected = {
@@ -110,6 +171,7 @@ fun CountryExplorerScreen(
 
         FilterSection(
             title = "Pais",
+            count = countryOptions.count { it != ALL_FILTER },
             options = countryOptions,
             selected = selectedCountry,
             onSelected = {
@@ -120,33 +182,61 @@ fun CountryExplorerScreen(
 
         FilterSection(
             title = "Ciudad",
+            count = cityOptions.count { it != ALL_FILTER },
             options = cityOptions,
             selected = selectedCity,
             onSelected = { selectedCity = it },
         )
 
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(
-                when (cardSizeMode) {
-                    RadioCardSizeMode.Compact -> 6.dp
-                    RadioCardSizeMode.Normal -> 8.dp
-                    RadioCardSizeMode.Large -> 10.dp
-                },
-            ),
-        ) {
-            items(
-                items = filteredStations,
-                key = { (index, _) -> index },
-            ) { (index, station) ->
-                RadioListItem(
-                    station = station,
-                    cardSizeMode = cardSizeMode,
-                    selected = selectedStationUrl == station.url,
-                    isFavorite = favorites.contains(index),
-                    onFavoriteClick = { onFavoriteClick(index) },
-                    onClick = { onStationClick(index, station) },
-                )
+        if (filteredStations.isEmpty()) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = "No hay radios para este filtro",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = "Prueba limpiar filtros o vuelve a una ciudad anterior.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(
+                    when (cardSizeMode) {
+                        RadioCardSizeMode.Compact -> 6.dp
+                        RadioCardSizeMode.Normal -> 8.dp
+                        RadioCardSizeMode.Large -> 10.dp
+                    },
+                ),
+            ) {
+                items(
+                    items = filteredStations,
+                    key = { (index, _) -> index },
+                ) { (index, station) ->
+                    RadioListItem(
+                        station = station,
+                        cardSizeMode = cardSizeMode,
+                        selected = selectedStationUrl == station.url,
+                        isFavorite = false,
+                        onFavoriteClick = {},
+                        showFavoriteAction = false,
+                        onClick = { onStationClick(index, station) },
+                    )
+                }
             }
         }
     }
@@ -155,13 +245,14 @@ fun CountryExplorerScreen(
 @Composable
 private fun FilterSection(
     title: String,
+    count: Int,
     options: List<String>,
     selected: String,
     onSelected: (String) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
-            text = title,
+            text = "$title ($count)",
             style = MaterialTheme.typography.labelLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 2.dp),
@@ -176,6 +267,19 @@ private fun FilterSection(
             }
         }
     }
+}
+
+private fun stationMatchesSearch(station: RadioStation, query: String): Boolean {
+    val lowerQuery = query.trim().lowercase()
+    if (lowerQuery.isBlank()) return true
+    return listOf(
+        station.name,
+        station.country,
+        station.region,
+        cityFromRegion(station.region).orEmpty(),
+        continentFor(station.country),
+        station.locationLabel,
+    ).any { value -> value.contains(lowerQuery, ignoreCase = true) }
 }
 
 private fun cityFromRegion(region: String): String? {

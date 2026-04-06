@@ -324,12 +324,6 @@ private fun HomeRootScreen(
                         stations = catalog,
                         selectedStationUrl = uiState.selectedStation?.url,
                         cardSizeMode = cardSizeMode,
-                        favorites = favorites,
-                        onFavoriteClick = { index ->
-                            onFavoritesChange(
-                                if (favorites.contains(index)) favorites - index else favorites + index,
-                            )
-                        },
                         onStationClick = { index, station -> coordinator.play(index, station, catalog) },
                     )
                 } else {
