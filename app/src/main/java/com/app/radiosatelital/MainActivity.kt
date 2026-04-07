@@ -34,12 +34,18 @@ class MainActivity : ComponentActivity() {
             ?.let { value -> enumValueOrDefault<RadioCardSizeMode>(value, RadioCardSizeMode.Normal) }
             ?: RadioCardSizeMode.Normal
         val savedAnimationsEnabled = preferences.getBoolean(KEY_ANIMATIONS_ENABLED, true)
+        val hasSeenIntro = preferences.getBoolean(KEY_INTRO_SEEN, false)
 
         setContent {
-            var introFinished by remember { mutableStateOf(false) }
+            var introFinished by remember { mutableStateOf(hasSeenIntro) }
 
             if (!introFinished) {
-                BrandIntroScreen(onFinished = { introFinished = true })
+                BrandIntroScreen(
+                    onFinished = {
+                        introFinished = true
+                        preferences.edit().putBoolean(KEY_INTRO_SEEN, true).apply()
+                    },
+                )
                 return@setContent
             }
 
@@ -96,6 +102,7 @@ class MainActivity : ComponentActivity() {
         const val KEY_LAYOUT_MODE = "layout_mode"
         const val KEY_CARD_SIZE_MODE = "card_size_mode"
         const val KEY_ANIMATIONS_ENABLED = "animations_enabled"
+        const val KEY_INTRO_SEEN = "intro_seen"
     }
 }
 

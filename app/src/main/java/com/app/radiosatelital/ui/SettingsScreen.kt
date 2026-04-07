@@ -91,15 +91,11 @@ fun SettingsScreen(
     }
     val adminPasswordError = if (adminPasswordInput.isBlank()) "Ingresa la contrasena" else null
     val canLoginAdmin = !adminState.isBusy && adminEmailError == null && adminPasswordError == null
-    var adminNavigationHandled by remember { mutableStateOf(false) }
 
-    LaunchedEffect(adminState.isAdminLoggedIn) {
-        if (adminState.isAdminLoggedIn && !adminNavigationHandled) {
-            adminNavigationHandled = true
+    LaunchedEffect(adminState.openAdminPanelEvent) {
+        if (adminState.openAdminPanelEvent) {
+            adminViewModel.consumeOpenAdminPanelEvent()
             onOpenAdminModeration()
-        }
-        if (!adminState.isAdminLoggedIn) {
-            adminNavigationHandled = false
         }
     }
 

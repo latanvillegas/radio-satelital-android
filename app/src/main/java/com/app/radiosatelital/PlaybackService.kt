@@ -2,6 +2,8 @@ package com.app.radiosatelital
 
 import android.app.PendingIntent
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -24,6 +26,15 @@ class PlaybackService : MediaSessionService() {
 
     private var mediaSession: MediaSession? = null
     private lateinit var player: ExoPlayer
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val retryAttemptsByMediaId = mutableMapOf<String, Int>()
+    private val pauseAutoStopRunnable = Runnable {
+        if (::player.isInitialized && !player.isPlaying) {
+            Log.i(TAG_SERVICE, "auto-stop: reproducción pausada demasiado tiempo, deteniendo servicio")
+            player.stop()
+            stopSelf()
+        }
+    }
     private val mediaSessionCallback = object : MediaSession.Callback {
         override fun onConnect(
             session: MediaSession,
@@ -122,6 +133,7 @@ class PlaybackService : MediaSessionService() {
             )
             .build()
             .apply {
+                repeatMode = Player.REPEAT_MODE_ALL
                 setAudioAttributes(
                     androidx.media3.common.AudioAttributes.Builder()
                         .setUsage(androidx.media3.common.C.USAGE_MEDIA)
@@ -137,10 +149,33 @@ class PlaybackService : MediaSessionService() {
                                 TAG_SERVICE,
                                 "player.onPlaybackStateChanged=$playbackState mediaId=${player.currentMediaItem?.mediaId} uri=${player.currentMediaItem?.localConfiguration?.uri}",
                             )
+                            when (playbackState) {
+                                Player.STATE_READY -> {
+                                    if (player.isPlaying) {
+                                        cancelPauseAutoStop()
+                                    } else {
+                                        schedulePauseAutoStop()
+                                    }
+                                }
+                                Player.STATE_BUFFERING -> cancelPauseAutoStop()
+                                Player.STATE_IDLE, Player.STATE_ENDED -> schedulePauseAutoStop()
+                            }
                         }
 
                         override fun onIsPlayingChanged(isPlaying: Boolean) {
                             Log.i(TAG_SERVICE, "player.onIsPlayingChanged=$isPlaying")
+                            if (isPlaying) {
+                                cancelPauseAutoStop()
+                            } else {
+                                schedulePauseAutoStop()
+                            }
+                        }
+
+                        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                            val mediaId = mediaItem?.mediaId.orEmpty()
+                            if (mediaId.isNotBlank()) {
+                                retryAttemptsByMediaId[mediaId] = 0
+                            }
                         }
 
                         override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
@@ -149,12 +184,15 @@ class PlaybackService : MediaSessionService() {
                                 "player.onPlayerError code=${error.errorCode} name=${error.errorCodeName} msg=${error.message} cause=${error.cause?.message} uri=${player.currentMediaItem?.localConfiguration?.uri}",
                                 error,
                             )
-                            android.os.Handler(android.os.Looper.getMainLooper()).post {
-                                android.widget.Toast.makeText(
-                                    applicationContext,
-                                    "Fallo de radio: ${error.errorCodeName}",
-                                    android.widget.Toast.LENGTH_LONG,
-                                ).show()
+                            val retried = maybeAutoRetry(error)
+                            if (!retried) {
+                                mainHandler.post {
+                                    android.widget.Toast.makeText(
+                                        applicationContext,
+                                        "Fallo de radio: ${error.errorCodeName}",
+                                        android.widget.Toast.LENGTH_LONG,
+                                    ).show()
+                                }
                             }
                         }
                     },
@@ -186,6 +224,8 @@ class PlaybackService : MediaSessionService() {
 
     override fun onDestroy() {
         Log.i(TAG_SERVICE, "onDestroy(): liberando recursos")
+        mainHandler.removeCallbacksAndMessages(null)
+        retryAttemptsByMediaId.clear()
         mediaSession?.run {
             player.release()
             release()
@@ -197,6 +237,60 @@ class PlaybackService : MediaSessionService() {
     private companion object {
         const val SESSION_ID = "radio_satelital_playback"
         const val TAG_SERVICE = "RADIO_SERVICE"
+        const val MAX_AUTO_RETRIES = 2
+        const val RETRY_BASE_DELAY_MS = 1_500L
+        const val PAUSE_AUTO_STOP_MS = 15 * 60 * 1000L
+    }
+
+    private fun maybeAutoRetry(error: PlaybackException): Boolean {
+        val mediaId = player.currentMediaItem?.mediaId.orEmpty()
+        if (mediaId.isBlank()) return false
+
+        val retriable = when (error.errorCode) {
+            PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED,
+            PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT,
+            PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS,
+            PlaybackException.ERROR_CODE_IO_FILE_NOT_FOUND,
+            PlaybackException.ERROR_CODE_IO_READ_POSITION_OUT_OF_RANGE,
+            PlaybackException.ERROR_CODE_IO_UNSPECIFIED,
+            PlaybackException.ERROR_CODE_TIMEOUT -> true
+
+            else -> false
+        }
+
+        if (!retriable) return false
+
+        val currentAttempts = retryAttemptsByMediaId[mediaId] ?: 0
+        if (currentAttempts >= MAX_AUTO_RETRIES) return false
+
+        val nextAttempt = currentAttempts + 1
+        retryAttemptsByMediaId[mediaId] = nextAttempt
+        val delayMs = RETRY_BASE_DELAY_MS * nextAttempt
+        Log.w(
+            TAG_SERVICE,
+            "auto-retry programado mediaId=$mediaId attempt=$nextAttempt delayMs=$delayMs",
+        )
+
+        mainHandler.postDelayed(
+            {
+                if (player.currentMediaItem?.mediaId == mediaId) {
+                    Log.i(TAG_SERVICE, "auto-retry ejecutado mediaId=$mediaId attempt=$nextAttempt")
+                    player.prepare()
+                    player.play()
+                }
+            },
+            delayMs,
+        )
+        return true
+    }
+
+    private fun schedulePauseAutoStop() {
+        mainHandler.removeCallbacks(pauseAutoStopRunnable)
+        mainHandler.postDelayed(pauseAutoStopRunnable, PAUSE_AUTO_STOP_MS)
+    }
+
+    private fun cancelPauseAutoStop() {
+        mainHandler.removeCallbacks(pauseAutoStopRunnable)
     }
 
     private fun resolveMediaItem(item: MediaItem): MediaItem {

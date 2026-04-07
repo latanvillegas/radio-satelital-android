@@ -23,6 +23,7 @@ data class AdminModerationUiState(
     val pendingRadios: List<CloudRadioDocument> = emptyList(),
     val infoMessage: String? = null,
     val isBusy: Boolean = false,
+    val openAdminPanelEvent: Boolean = false,
 )
 
 class AdminModerationViewModel(application: Application) : AndroidViewModel(application) {
@@ -70,6 +71,7 @@ class AdminModerationViewModel(application: Application) : AndroidViewModel(appl
                         isAdminLoggedIn = true,
                         currentUserEmail = repository.currentUserEmail(),
                         infoMessage = "Sesion de administrador iniciada",
+                        openAdminPanelEvent = true,
                     )
                     startPendingListener()
                 }
@@ -84,6 +86,7 @@ class AdminModerationViewModel(application: Application) : AndroidViewModel(appl
                         isAdminLoggedIn = false,
                         currentUserEmail = repository.currentUserEmail(),
                         infoMessage = mapAdminLoginError(it),
+                        openAdminPanelEvent = false,
                     )
                 }
         }
@@ -118,6 +121,7 @@ class AdminModerationViewModel(application: Application) : AndroidViewModel(appl
             pendingRadios = emptyList(),
             infoMessage = "Sesion cerrada",
             isBusy = false,
+            openAdminPanelEvent = false,
         )
     }
 
@@ -188,6 +192,12 @@ class AdminModerationViewModel(application: Application) : AndroidViewModel(appl
     fun clearInfoMessage() {
         if (!uiState.infoMessage.isNullOrBlank()) {
             uiState = uiState.copy(infoMessage = null)
+        }
+    }
+
+    fun consumeOpenAdminPanelEvent() {
+        if (uiState.openAdminPanelEvent) {
+            uiState = uiState.copy(openAdminPanelEvent = false)
         }
     }
 

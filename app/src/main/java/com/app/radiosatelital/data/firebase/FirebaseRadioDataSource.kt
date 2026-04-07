@@ -255,6 +255,52 @@ class FirebaseRadioDataSource(private val context: Context) {
             }
     }
 
+    fun observeSubmittedRadiosByUser(
+        createdBy: String,
+        onUpdate: (Map<String, String>) -> Unit,
+        onError: (Throwable) -> Unit,
+    ): ListenerRegistration? {
+        val db = firestoreOrNull() ?: run {
+            onError(IllegalStateException("Firebase no esta configurado"))
+            return null
+        }
+
+        val normalizedCreatedBy = createdBy.trim()
+        if (normalizedCreatedBy.isBlank()) {
+            onUpdate(emptyMap())
+            return null
+        }
+
+        return db.collection("submitted_radios")
+            .whereEqualTo("createdBy", normalizedCreatedBy)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    onError(error)
+                    return@addSnapshotListener
+                }
+
+                val latestByStream = snapshot?.documents
+                    ?.mapNotNull { doc ->
+                        val streamUrl = doc.getString("streamUrl")?.trim().orEmpty()
+                        val status = doc.getString("status")?.trim().orEmpty()
+                        if (streamUrl.isBlank() || status.isBlank()) return@mapNotNull null
+                        val stamp = doc.getTimestamp("reviewedAt")
+                            ?: doc.getTimestamp("lastCheckedAt")
+                            ?: doc.getTimestamp("createdAt")
+                            ?: doc.getTimestamp("updatedAt")
+                            ?: com.google.firebase.Timestamp.now()
+                        streamUrl to (status to stamp)
+                    }
+                    .orEmpty()
+                    .groupBy({ it.first }, { it.second })
+                    .mapValues { (_, values) ->
+                        values.maxByOrNull { it.second.seconds * 1000L + it.second.nanoseconds / 1_000_000L }?.first.orEmpty()
+                    }
+
+                onUpdate(latestByStream)
+            }
+    }
+
     suspend fun approveSubmittedRadio(radio: CloudRadioDocument): Result<Unit> {
         val db = firestoreOrNull()
             ?: return Result.failure(IllegalStateException("Firebase no esta configurado"))

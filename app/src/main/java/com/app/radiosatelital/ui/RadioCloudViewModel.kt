@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 data class RadioCloudUiState(
     val publicRadios: List<RadioStation> = emptyList(),
     val liveListenersByUrl: Map<String, Int> = emptyMap(),
+    val submissionStatusByUrl: Map<String, String> = emptyMap(),
     val authUid: String? = null,
     val infoMessage: String? = null,
 )
@@ -20,6 +21,7 @@ class RadioCloudViewModel(application: Application) : AndroidViewModel(applicati
     private val repository = RadioRepository(application.applicationContext)
     private var listenerRegistration: ListenerRegistration? = null
     private var listenerCountsRegistration: ListenerRegistration? = null
+    private var submissionListenerRegistration: ListenerRegistration? = null
 
     var uiState = RadioCloudUiState()
         private set
@@ -29,6 +31,15 @@ class RadioCloudViewModel(application: Application) : AndroidViewModel(applicati
             repository.authenticateAnonymously()
                 .onSuccess { uid ->
                     uiState = uiState.copy(authUid = uid)
+                    submissionListenerRegistration = repository.observeSubmittedRadiosByUser(
+                        createdBy = uid,
+                        onUpdate = { statusByUrl ->
+                            uiState = uiState.copy(submissionStatusByUrl = statusByUrl)
+                        },
+                        onError = {
+                            uiState = uiState.copy(infoMessage = "No se pudo sincronizar el estado de tus radios")
+                        },
+                    )
                 }
                 .onFailure {
                     uiState = uiState.copy(infoMessage = "Firebase no disponible: trabajando solo en modo local")
@@ -77,6 +88,8 @@ class RadioCloudViewModel(application: Application) : AndroidViewModel(applicati
         listenerRegistration = null
         listenerCountsRegistration?.remove()
         listenerCountsRegistration = null
+        submissionListenerRegistration?.remove()
+        submissionListenerRegistration = null
         super.onCleared()
     }
 }

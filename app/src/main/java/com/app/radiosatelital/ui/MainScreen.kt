@@ -165,6 +165,7 @@ fun MainScreen(
             MineRadiosScreen(
                 stations = userStations,
                 cloudMessage = cloudState.infoMessage,
+                submissionStatusByUrl = cloudState.submissionStatusByUrl,
                 onPlayStation = { catalog, index ->
                     catalog.getOrNull(index)?.let { station ->
                         coordinator.play(index, station, catalog)

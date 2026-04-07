@@ -13,8 +13,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.Alignment
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.HourglassTop
 import androidx.activity.compose.BackHandler
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -40,6 +43,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.app.radiosatelital.RadioStation
+import com.app.radiosatelital.data.firebase.STATUS_APPROVED
+import com.app.radiosatelital.data.firebase.STATUS_PENDING
+import com.app.radiosatelital.data.firebase.STATUS_REJECTED
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -84,6 +90,7 @@ fun UserRadioStation.toRadioStation(): RadioStation {
 fun MineRadiosScreen(
     stations: List<UserRadioStation>,
     cloudMessage: String?,
+    submissionStatusByUrl: Map<String, String>,
     onPlayStation: (List<RadioStation>, Int) -> Unit,
     onSaveStation: (UserRadioStation, Int?) -> Unit,
     onDeleteStation: (Int) -> Unit,
@@ -229,8 +236,15 @@ fun MineRadiosScreen(
                     items = filteredStations,
                     key = { (index, _) -> index },
                 ) { (index, station) ->
+                    val submissionStatus = submissionStatusByUrl[station.streamUrl]?.lowercase().orEmpty()
+                    val cardContainerColor = when (submissionStatus) {
+                        STATUS_APPROVED -> Color(0xFF2E7D32).copy(alpha = 0.06f)
+                        STATUS_PENDING -> Color(0xFFB26A00).copy(alpha = 0.06f)
+                        STATUS_REJECTED -> MaterialTheme.colorScheme.error.copy(alpha = 0.06f)
+                        else -> MaterialTheme.colorScheme.surface
+                    }
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        colors = CardDefaults.cardColors(containerColor = cardContainerColor),
                     ) {
                         Column(
                             modifier = Modifier
@@ -269,6 +283,52 @@ fun MineRadiosScreen(
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
+                            submissionStatusByUrl[station.streamUrl]?.let { status ->
+                                val statusLabel: String
+                                val statusColor: Color
+                                val statusIcon = when (status.lowercase()) {
+                                    STATUS_PENDING -> {
+                                        statusLabel = "Pendiente"
+                                        statusColor = Color(0xFFB26A00)
+                                        Icons.Filled.HourglassTop
+                                    }
+                                    STATUS_APPROVED -> {
+                                        statusLabel = "Aceptada"
+                                        statusColor = Color(0xFF2E7D32)
+                                        Icons.Filled.CheckCircle
+                                    }
+                                    STATUS_REJECTED -> {
+                                        statusLabel = "Rechazada"
+                                        statusColor = MaterialTheme.colorScheme.error
+                                        Icons.Filled.Cancel
+                                    }
+                                    else -> {
+                                        statusLabel = status.replaceFirstChar { it.uppercase() }
+                                        statusColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                        Icons.Filled.HourglassTop
+                                    }
+                                }
+
+                                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Surface(
+                                        color = statusColor.copy(alpha = 0.12f),
+                                        shape = androidx.compose.foundation.shape.RoundedCornerShape(999.dp),
+                                    ) {
+                                        Text(
+                                            text = "Estado: $statusLabel",
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = statusColor,
+                                            fontWeight = FontWeight.SemiBold,
+                                        )
+                                    }
+                                    androidx.compose.material3.Icon(
+                                        imageVector = statusIcon,
+                                        contentDescription = null,
+                                        tint = statusColor,
+                                    )
+                                }
+                            }
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,

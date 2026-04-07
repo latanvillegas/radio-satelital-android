@@ -62,6 +62,18 @@ class RadioRepository(context: Context) {
         return dataSource.observePendingRadios(onUpdate = onUpdate, onError = onError)
     }
 
+    fun observeSubmittedRadiosByUser(
+        createdBy: String,
+        onUpdate: (Map<String, String>) -> Unit,
+        onError: (Throwable) -> Unit,
+    ): ListenerRegistration? {
+        return dataSource.observeSubmittedRadiosByUser(
+            createdBy = createdBy,
+            onUpdate = onUpdate,
+            onError = onError,
+        )
+    }
+
     suspend fun approveSubmittedRadio(radio: CloudRadioDocument): Result<Unit> {
         return dataSource.approveSubmittedRadio(radio)
     }
