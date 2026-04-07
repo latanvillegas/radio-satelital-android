@@ -1,6 +1,7 @@
 package com.app.radiosatelital.data.firebase
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.util.Log
 import com.app.radiosatelital.BuildConfig
 import com.app.radiosatelital.ui.UserRadioStation
@@ -18,7 +19,9 @@ import java.util.Locale
 
 class FirebaseRadioDataSource(private val context: Context) {
 
-    fun adminConfiguredEmail(): String = normalizeEmail(BuildConfig.ADMIN_EMAIL)
+    fun adminConfiguredEmail(): String = resolveAdminEmailConfig().email
+
+    fun adminConfiguredEmailSource(): String = resolveAdminEmailConfig().source
 
     suspend fun ensureAnonymousAuth(): Result<String> {
         val auth = authOrNull()
@@ -75,20 +78,21 @@ class FirebaseRadioDataSource(private val context: Context) {
     suspend fun signInAdmin(email: String, password: String): Result<Unit> {
         val auth = authOrNull()
             ?: return Result.failure(IllegalStateException("Firebase no esta configurado"))
-        val adminEmail = adminConfiguredEmail()
+        val adminConfig = resolveAdminEmailConfig()
+        val adminEmail = adminConfig.email
         val normalizedInputEmail = normalizeEmail(email)
         val projectId = FirebaseApp.getInstance().options.projectId.orEmpty()
         val isAdminEmailEmpty = adminEmail.isBlank()
 
         Log.d(
             TAG,
-            "[signInAdmin][INPUT] inputEmail='${normalizedInputEmail}' passwordLength=${password.length} adminEmail='${adminEmail}' adminEmailEmpty=${isAdminEmailEmpty} projectId='${projectId}'",
+            "[signInAdmin][INPUT] inputEmail='${normalizedInputEmail}' passwordLength=${password.length} adminEmail='${adminEmail}' adminEmailEmpty=${isAdminEmailEmpty} adminEmailSource='${adminConfig.source}' projectId='${projectId}'",
         )
 
         if (isAdminEmailEmpty) {
             Log.e(
                 TAG,
-                "${PRE_LOGIN_FAIL_ADMIN_EMAIL_EMPTY} ADMIN_EMAIL vacio. source=BuildConfig/local.properties/gradle/env",
+                "${PRE_LOGIN_FAIL_ADMIN_EMAIL_EMPTY} ADMIN_EMAIL vacio. source='${adminConfig.source}'",
             )
             return Result.failure(
                 IllegalStateException(
@@ -187,6 +191,30 @@ class FirebaseRadioDataSource(private val context: Context) {
     private fun normalizeEmail(raw: String?): String {
         val trimmed = raw.orEmpty().trim().trim('"')
         return trimmed.lowercase(Locale.ROOT)
+    }
+
+    private fun resolveAdminEmailConfig(): AdminEmailConfig {
+        val fromBuildConfig = normalizeEmail(BuildConfig.ADMIN_EMAIL)
+        if (fromBuildConfig.isNotBlank()) {
+            return AdminEmailConfig(fromBuildConfig, "BuildConfig(${BuildConfig.ADMIN_EMAIL_SOURCE})")
+        }
+
+        val fromManifest = readAdminEmailFromManifest()
+        if (fromManifest.isNotBlank()) {
+            return AdminEmailConfig(fromManifest, "ManifestMetaData(ADMIN_EMAIL)")
+        }
+
+        return AdminEmailConfig("", "EMPTY(BuildConfigSource=${BuildConfig.ADMIN_EMAIL_SOURCE})")
+    }
+
+    private fun readAdminEmailFromManifest(): String {
+        return runCatching {
+            val appInfo = context.packageManager.getApplicationInfo(
+                context.packageName,
+                PackageManager.GET_META_DATA,
+            )
+            normalizeEmail(appInfo.metaData?.getString(MANIFEST_ADMIN_EMAIL_KEY))
+        }.getOrDefault("")
     }
 
     fun signOutAdmin() {
@@ -324,6 +352,7 @@ class FirebaseRadioDataSource(private val context: Context) {
 
     companion object {
         private const val TAG = "AdminLogin"
+        private const val MANIFEST_ADMIN_EMAIL_KEY = "ADMIN_EMAIL"
         private const val PRE_LOGIN_FAIL_ADMIN_EMAIL_EMPTY = "PRE_LOGIN_FAIL_ADMIN_EMAIL_EMPTY"
         private const val DURING_LOGIN_FIREBASE_USER_NOT_FOUND = "DURING_LOGIN_FIREBASE_USER_NOT_FOUND"
         private const val DURING_LOGIN_FIREBASE_INVALID_CREDENTIALS = "DURING_LOGIN_FIREBASE_INVALID_CREDENTIALS"
@@ -331,6 +360,11 @@ class FirebaseRadioDataSource(private val context: Context) {
         private const val POST_LOGIN_ADMIN_EMAIL_MISMATCH = "POST_LOGIN_ADMIN_EMAIL_MISMATCH"
         private const val LOGIN_ADMIN_SUCCESS = "LOGIN_ADMIN_SUCCESS"
     }
+
+    private data class AdminEmailConfig(
+        val email: String,
+        val source: String,
+    )
 
     private fun firestoreOrNull(): FirebaseFirestore? {
         if (!ensureFirebaseApp()) return null

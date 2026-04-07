@@ -26,6 +26,8 @@ class RadioRepository(context: Context) {
 
     fun adminDefaultEmail(): String = dataSource.adminConfiguredEmail()
 
+    fun adminDefaultEmailSource(): String = dataSource.adminConfiguredEmailSource()
+
     fun isAdminSessionActive(): Boolean = dataSource.isAdminSessionActive()
 
     fun currentUserEmail(): String? = dataSource.currentUserEmail()

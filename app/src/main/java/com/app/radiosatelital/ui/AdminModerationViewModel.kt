@@ -40,6 +40,13 @@ class AdminModerationViewModel(application: Application) : AndroidViewModel(appl
         private set
 
     init {
+        val normalizedAdminEmail = repository.adminDefaultEmail()
+        val adminEmailSource = repository.adminDefaultEmailSource()
+        Log.i(
+            TAG,
+            "[SettingsAdmin][OPEN] adminEmail='${normalizedAdminEmail}' adminEmailEmpty=${normalizedAdminEmail.isBlank()} source='${adminEmailSource}'",
+        )
+
         if (uiState.isAdminLoggedIn) {
             startPendingListener()
         }

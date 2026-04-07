@@ -14,6 +14,9 @@
 		android:theme="@style/Theme.RadioSatelital"
 		android:usesCleartextTraffic="true"
 		android:supportsRtl="true">
+		<meta-data
+			android:name="ADMIN_EMAIL"
+			android:value="${ADMIN_EMAIL}" />
 		<service
 			android:name=".PlaybackService"
 			android:exported="false"

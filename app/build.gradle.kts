@@ -13,13 +13,26 @@ val localProperties = Properties().apply {
 	}
 }
 
-val adminEmail = sequenceOf(
-	providers.gradleProperty("ADMIN_EMAIL").orNull,
+val adminEmailFromGradle = providers.gradleProperty("ADMIN_EMAIL").orNull
+val adminEmailFromLocalProperties = sequenceOf(
 	localProperties.getProperty("ADMIN_EMAIL"),
-	System.getenv("ADMIN_EMAIL"),
+	localProperties.getProperty("admin.email"),
 ).firstOrNull { !it.isNullOrBlank() }
-	?.trim()
-	.orEmpty()
+val adminEmailFromEnvironment = System.getenv("ADMIN_EMAIL")
+
+val adminEmailRaw = sequenceOf(
+	adminEmailFromGradle,
+	adminEmailFromLocalProperties,
+	adminEmailFromEnvironment,
+).firstOrNull { !it.isNullOrBlank() }
+
+val adminEmail = adminEmailRaw?.trim().orEmpty()
+val adminEmailSource = when {
+	!adminEmailFromGradle.isNullOrBlank() -> "gradleProperty:ADMIN_EMAIL"
+	!adminEmailFromLocalProperties.isNullOrBlank() -> "local.properties:ADMIN_EMAIL"
+	!adminEmailFromEnvironment.isNullOrBlank() -> "env:ADMIN_EMAIL"
+	else -> "empty"
+}
 
 android {
 	namespace = "com.app.radiosatelital"
@@ -32,6 +45,8 @@ android {
 		versionCode = 1
 		versionName = "1.0"
 		buildConfigField("String", "ADMIN_EMAIL", "\"$adminEmail\"")
+		buildConfigField("String", "ADMIN_EMAIL_SOURCE", "\"$adminEmailSource\"")
+		manifestPlaceholders["ADMIN_EMAIL"] = adminEmail
 
 		testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 	}
