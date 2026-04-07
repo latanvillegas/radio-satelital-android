@@ -23,12 +23,16 @@ import androidx.media3.session.SessionToken
 import com.app.radiosatelital.PlaybackService
 import com.app.radiosatelital.RadioStation
 import com.app.radiosatelital.data.artwork.ArtworkRepository
+import com.app.radiosatelital.data.firebase.RadioRepository
 import com.app.radiosatelital.defaultStations
 import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.net.URI
 
@@ -78,7 +82,10 @@ class PlaybackCoordinator(private val appContext: android.content.Context) {
     private var activeCatalog: List<RadioStation> = defaultStations
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private val artworkRepository = ArtworkRepository()
+    private val radioRepository = RadioRepository(appContext)
     private var lastArtworkLookupKey: String? = null
+    private var countedStationUrl: String? = null
+    private var listenersHeartbeatJob: Job? = null
 
     private val listener = object : Player.Listener {
         override fun onPlaybackStateChanged(playbackState: Int) {
@@ -148,6 +155,9 @@ class PlaybackCoordinator(private val appContext: android.content.Context) {
     }
 
     fun release() {
+        syncLiveListeners(null)
+        listenersHeartbeatJob?.cancel()
+        listenersHeartbeatJob = null
         controller?.removeListener(listener)
         controller = null
         controllerFuture?.let(MediaController::releaseFuture)
@@ -302,6 +312,31 @@ class PlaybackCoordinator(private val appContext: android.content.Context) {
             volume = activeController.volume,
         )
         updateNowPlayingFromMetadata(activeController.mediaMetadata)
+
+        val liveStation = if (newState is RadioPlaybackState.Playing) selectedStation?.url else null
+        syncLiveListeners(liveStation)
+    }
+
+    private fun syncLiveListeners(targetStationUrl: String?) {
+        if (targetStationUrl == countedStationUrl) return
+        val previous = countedStationUrl
+        countedStationUrl = targetStationUrl
+        listenersHeartbeatJob?.cancel()
+        listenersHeartbeatJob = null
+
+        scope.launch {
+            previous?.let { radioRepository.updateLiveListeners(it, -1) }
+            targetStationUrl?.let { radioRepository.updateLiveListeners(it, +1) }
+        }
+
+        if (!targetStationUrl.isNullOrBlank()) {
+            listenersHeartbeatJob = scope.launch(Dispatchers.IO) {
+                while (isActive && countedStationUrl == targetStationUrl) {
+                    radioRepository.updateLiveListeners(targetStationUrl, 0)
+                    delay(25_000)
+                }
+            }
+        }
     }
 
     private fun updateNowPlayingFromMetadata(metadata: MediaMetadata) {

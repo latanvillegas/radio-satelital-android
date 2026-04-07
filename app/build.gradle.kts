@@ -1,4 +1,5 @@
 import java.util.Properties
+import org.gradle.api.GradleException
 
 plugins {
 	id("com.android.application")
@@ -32,6 +33,12 @@ val adminEmailSource = when {
 	!adminEmailFromLocalProperties.isNullOrBlank() -> "local.properties:ADMIN_EMAIL"
 	!adminEmailFromEnvironment.isNullOrBlank() -> "env:ADMIN_EMAIL"
 	else -> "empty"
+}
+
+if (adminEmail.isBlank()) {
+	throw GradleException(
+		"ADMIN_EMAIL no esta configurado. Definelo en ~/.gradle/gradle.properties, local.properties o variable de entorno ADMIN_EMAIL antes de compilar.",
+	)
 }
 
 android {

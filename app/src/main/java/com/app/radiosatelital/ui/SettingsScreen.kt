@@ -68,6 +68,7 @@ fun SettingsScreen(
     onCardSizeModeChange: (RadioCardSizeMode) -> Unit,
     onAnimationsEnabledChange: (Boolean) -> Unit,
     onResetAppearance: () -> Unit,
+    onOpenAdminModeration: () -> Unit,
     onBack: () -> Unit,
 ) {
     val adminViewModel: AdminModerationViewModel = viewModel()
@@ -85,6 +86,17 @@ fun SettingsScreen(
     }
     val adminPasswordError = if (adminPasswordInput.isBlank()) "Ingresa la contrasena" else null
     val canLoginAdmin = !adminState.isBusy && adminEmailError == null && adminPasswordError == null
+    var adminNavigationHandled by remember { mutableStateOf(false) }
+
+    LaunchedEffect(adminState.isAdminLoggedIn) {
+        if (adminState.isAdminLoggedIn && !adminNavigationHandled) {
+            adminNavigationHandled = true
+            onOpenAdminModeration()
+        }
+        if (!adminState.isAdminLoggedIn) {
+            adminNavigationHandled = false
+        }
+    }
 
     LaunchedEffect(adminState.infoMessage) {
         val message = adminState.infoMessage
@@ -304,7 +316,7 @@ fun SettingsScreen(
                         onClick = {
                             Log.d(
                                 "AdminLogin",
-                                "[SettingsScreen] Click Ingresar. email='${trimmedAdminEmail}' passwordLength=${adminPasswordInput.length}",
+                                "[SettingsScreen] Click Ingresar. passwordLength=${adminPasswordInput.length}",
                             )
                             adminViewModel.loginAsAdmin(
                                 email = trimmedAdminEmail,
@@ -331,35 +343,12 @@ fun SettingsScreen(
                     style = MaterialTheme.typography.bodyMedium,
                 )
 
-                TextButton(
-                    onClick = { adminViewModel.logoutAdmin() },
+                Button(
+                    onClick = onOpenAdminModeration,
                     enabled = !adminState.isBusy,
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Cerrar sesion")
-                }
-
-                Text(
-                    text = "Radios pendientes",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-
-                if (adminState.pendingRadios.isEmpty()) {
-                    Text(
-                        text = "No hay radios pendientes",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                } else {
-                    adminState.pendingRadios.forEach { pending ->
-                        PendingRadioModerationItem(
-                            radio = pending,
-                            busy = adminState.isBusy,
-                            onApprove = { adminViewModel.approveRadio(pending) },
-                            onReject = { adminViewModel.rejectRadio(pending.id) },
-                        )
-                    }
+                    Text("Abrir panel de moderación")
                 }
             }
 
@@ -483,45 +472,6 @@ private fun SettingsSectionCard(
                 content()
             },
         )
-    }
-}
-
-@Composable
-private fun PendingRadioModerationItem(
-    radio: CloudRadioDocument,
-    busy: Boolean,
-    onApprove: () -> Unit,
-    onReject: () -> Unit,
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            Text(text = radio.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
-            Text(text = radio.streamUrl, style = MaterialTheme.typography.bodySmall)
-            Text(
-                text = listOf(radio.country, radio.region, radio.districtOrCity)
-                    .filter { it.isNotBlank() }
-                    .joinToString(" · "),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = onApprove, enabled = !busy) {
-                    Text("Aprobar")
-                }
-                TextButton(onClick = onReject, enabled = !busy) {
-                    Text("Rechazar")
-                }
-            }
-        }
     }
 }
 

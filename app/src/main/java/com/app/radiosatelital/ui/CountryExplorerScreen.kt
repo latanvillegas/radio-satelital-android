@@ -287,6 +287,7 @@ fun CountryExplorerScreen(
                             station = station,
                             cardSizeMode = cardSizeMode,
                             selected = selectedStationUrl == station.url,
+                            liveListeners = 0,
                             isFavorite = false,
                             onFavoriteClick = {},
                             showFavoriteAction = false,

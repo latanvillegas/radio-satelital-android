@@ -10,6 +10,7 @@ import kotlinx.coroutines.launch
 
 data class RadioCloudUiState(
     val publicRadios: List<RadioStation> = emptyList(),
+    val liveListenersByUrl: Map<String, Int> = emptyMap(),
     val authUid: String? = null,
     val infoMessage: String? = null,
 )
@@ -18,6 +19,7 @@ class RadioCloudViewModel(application: Application) : AndroidViewModel(applicati
 
     private val repository = RadioRepository(application.applicationContext)
     private var listenerRegistration: ListenerRegistration? = null
+    private var listenerCountsRegistration: ListenerRegistration? = null
 
     var uiState = RadioCloudUiState()
         private set
@@ -38,6 +40,15 @@ class RadioCloudViewModel(application: Application) : AndroidViewModel(applicati
                 },
                 onError = {
                     uiState = uiState.copy(infoMessage = "No se pudieron sincronizar radios publicas")
+                },
+            )
+
+            listenerCountsRegistration = repository.observeLiveListenerCounts(
+                onUpdate = { counts ->
+                    uiState = uiState.copy(liveListenersByUrl = counts)
+                },
+                onError = {
+                    uiState = uiState.copy(infoMessage = "No se pudo sincronizar conteo de oyentes")
                 },
             )
         }
@@ -64,6 +75,8 @@ class RadioCloudViewModel(application: Application) : AndroidViewModel(applicati
     override fun onCleared() {
         listenerRegistration?.remove()
         listenerRegistration = null
+        listenerCountsRegistration?.remove()
+        listenerCountsRegistration = null
         super.onCleared()
     }
 }

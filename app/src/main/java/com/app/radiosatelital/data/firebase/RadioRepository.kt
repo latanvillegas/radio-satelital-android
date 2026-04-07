@@ -24,6 +24,17 @@ class RadioRepository(context: Context) {
         )
     }
 
+    fun observeLiveListenerCounts(
+        onUpdate: (Map<String, Int>) -> Unit,
+        onError: (Throwable) -> Unit,
+    ): ListenerRegistration? {
+        return dataSource.observeLiveListenerCounts(onUpdate = onUpdate, onError = onError)
+    }
+
+    suspend fun updateLiveListeners(streamUrl: String, delta: Int): Result<Unit> {
+        return dataSource.updateLiveListeners(streamUrl = streamUrl, delta = delta)
+    }
+
     fun adminDefaultEmail(): String = dataSource.adminConfiguredEmail()
 
     fun adminDefaultEmailSource(): String = dataSource.adminConfiguredEmailSource()
@@ -57,5 +68,13 @@ class RadioRepository(context: Context) {
 
     suspend fun rejectSubmittedRadio(radioId: String): Result<Unit> {
         return dataSource.rejectSubmittedRadio(radioId)
+    }
+
+    suspend fun updateSubmittedRadio(radio: CloudRadioDocument): Result<Unit> {
+        return dataSource.updateSubmittedRadio(radio)
+    }
+
+    suspend fun testStreamAvailability(streamUrl: String): Result<Unit> {
+        return dataSource.testStreamAvailability(streamUrl)
     }
 }

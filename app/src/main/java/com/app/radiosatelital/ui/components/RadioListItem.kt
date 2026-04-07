@@ -38,6 +38,7 @@ fun RadioListItem(
     station: RadioStation,
     cardSizeMode: RadioCardSizeMode,
     selected: Boolean,
+    liveListeners: Int,
     isFavorite: Boolean,
     onFavoriteClick: () -> Unit,
     onClick: () -> Unit,
@@ -94,6 +95,13 @@ fun RadioListItem(
                     text = station.locationLabel,
                     style = sizing.subtitleStyle,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = "${liveListeners.coerceAtLeast(0)} escuchando",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )

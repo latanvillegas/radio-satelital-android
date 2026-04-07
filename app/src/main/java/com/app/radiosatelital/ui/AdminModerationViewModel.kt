@@ -32,7 +32,7 @@ class AdminModerationViewModel(application: Application) : AndroidViewModel(appl
 
     var uiState by mutableStateOf(
         AdminModerationUiState(
-        adminEmail = repository.adminDefaultEmail(),
+        adminEmail = "",
         isAdminLoggedIn = repository.isAdminSessionActive(),
         currentUserEmail = repository.currentUserEmail(),
     )
@@ -44,7 +44,7 @@ class AdminModerationViewModel(application: Application) : AndroidViewModel(appl
         val adminEmailSource = repository.adminDefaultEmailSource()
         Log.i(
             TAG,
-            "[SettingsAdmin][OPEN] adminEmail='${normalizedAdminEmail}' adminEmailEmpty=${normalizedAdminEmail.isBlank()} source='${adminEmailSource}'",
+            "[SettingsAdmin][OPEN] adminEmailEmpty=${normalizedAdminEmail.isBlank()} source='${adminEmailSource}'",
         )
 
         if (uiState.isAdminLoggedIn) {
@@ -56,14 +56,14 @@ class AdminModerationViewModel(application: Application) : AndroidViewModel(appl
         viewModelScope.launch {
             Log.d(
                 TAG,
-                "[loginAsAdmin] Start. email='${email.trim()}' passwordLength=${password.length}",
+                "[loginAsAdmin] Start. passwordLength=${password.length}",
             )
             uiState = uiState.copy(isBusy = true, infoMessage = null)
             repository.signInAdmin(email.trim(), password)
                 .onSuccess {
                     Log.d(
                         TAG,
-                        "[loginAsAdmin] Success. currentUserEmail='${repository.currentUserEmail().orEmpty()}'",
+                        "[loginAsAdmin] Success.",
                     )
                     uiState = uiState.copy(
                         isBusy = false,
@@ -148,6 +148,38 @@ class AdminModerationViewModel(application: Application) : AndroidViewModel(appl
                     uiState = uiState.copy(
                         isBusy = false,
                         infoMessage = "No se pudo rechazar: ${it.message ?: "error"}",
+                    )
+                }
+        }
+    }
+
+    fun updatePendingRadio(radio: CloudRadioDocument) {
+        viewModelScope.launch {
+            uiState = uiState.copy(isBusy = true, infoMessage = null)
+            repository.updateSubmittedRadio(radio)
+                .onSuccess {
+                    uiState = uiState.copy(isBusy = false, infoMessage = "Radio actualizada")
+                }
+                .onFailure {
+                    uiState = uiState.copy(
+                        isBusy = false,
+                        infoMessage = "No se pudo actualizar: ${it.message ?: "error"}",
+                    )
+                }
+        }
+    }
+
+    fun testStream(streamUrl: String) {
+        viewModelScope.launch {
+            uiState = uiState.copy(isBusy = true, infoMessage = null)
+            repository.testStreamAvailability(streamUrl)
+                .onSuccess {
+                    uiState = uiState.copy(isBusy = false, infoMessage = "Stream disponible")
+                }
+                .onFailure {
+                    uiState = uiState.copy(
+                        isBusy = false,
+                        infoMessage = "Stream no disponible: ${it.message ?: "error"}",
                     )
                 }
         }

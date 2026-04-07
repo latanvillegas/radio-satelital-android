@@ -81,6 +81,7 @@ fun MainScreen(
     val uiState = coordinator.uiState
     val cloudViewModel: RadioCloudViewModel = viewModel()
     val cloudState = cloudViewModel.uiState
+    val liveListenersByUrl = cloudState.liveListenersByUrl
     val baseCatalog = remember(cloudState.publicRadios) {
         (defaultStations + cloudState.publicRadios).distinctBy { it.url }
     }
@@ -102,6 +103,7 @@ fun MainScreen(
                 layoutMode = layoutMode,
                 cardSizeMode = cardSizeMode,
                 baseCatalog = baseCatalog,
+                liveListenersByUrl = liveListenersByUrl,
                 userStations = userStations,
                 favorites = favorites,
                 onFavoritesChange = { favorites = it },
@@ -137,6 +139,17 @@ fun MainScreen(
                 onCardSizeModeChange = onCardSizeModeChange,
                 onAnimationsEnabledChange = onAnimationsEnabledChange,
                 onResetAppearance = onResetAppearance,
+                onOpenAdminModeration = {
+                    navController.navigate(AppRoutes.ADMIN_MODERATION) {
+                        launchSingleTop = true
+                    }
+                },
+                onBack = { navController.navigateUp() },
+            )
+        }
+
+        composable(AppRoutes.ADMIN_MODERATION) {
+            AdminModerationScreen(
                 onBack = { navController.navigateUp() },
             )
         }
@@ -210,6 +223,7 @@ private fun HomeRootScreen(
     layoutMode: RadioLayoutMode,
     cardSizeMode: RadioCardSizeMode,
     baseCatalog: List<RadioStation>,
+    liveListenersByUrl: Map<String, Int>,
     userStations: List<UserRadioStation>,
     favorites: Set<Int>,
     onFavoritesChange: (Set<Int>) -> Unit,
@@ -363,6 +377,7 @@ private fun HomeRootScreen(
                                     station = station,
                                     cardSizeMode = cardSizeMode,
                                     selected = uiState.selectedStation?.url == station.url,
+                                    liveListeners = liveListenersByUrl[station.url] ?: 0,
                                     isFavorite = favorites.contains(index),
                                     onFavoriteClick = {
                                         onFavoritesChange(
@@ -390,6 +405,7 @@ private fun HomeRootScreen(
                                     station = station,
                                     cardSizeMode = cardSizeMode,
                                     selected = uiState.selectedStation?.url == station.url,
+                                    liveListeners = liveListenersByUrl[station.url] ?: 0,
                                     isFavorite = favorites.contains(index),
                                     onFavoriteClick = {
                                         onFavoritesChange(
