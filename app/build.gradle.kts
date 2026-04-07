@@ -1,10 +1,25 @@
+import java.util.Properties
+
 plugins {
 	id("com.android.application")
 	id("org.jetbrains.kotlin.android")
 	id("com.google.gms.google-services")
 }
 
-val adminEmail = providers.gradleProperty("ADMIN_EMAIL").orNull?.trim().orEmpty()
+val localProperties = Properties().apply {
+	val localPropsFile = rootProject.file("local.properties")
+	if (localPropsFile.exists()) {
+		localPropsFile.inputStream().use { load(it) }
+	}
+}
+
+val adminEmail = sequenceOf(
+	providers.gradleProperty("ADMIN_EMAIL").orNull,
+	localProperties.getProperty("ADMIN_EMAIL"),
+	System.getenv("ADMIN_EMAIL"),
+).firstOrNull { !it.isNullOrBlank() }
+	?.trim()
+	.orEmpty()
 
 android {
 	namespace = "com.app.radiosatelital"

@@ -1,6 +1,7 @@
 package com.app.radiosatelital.ui
 
 import android.app.Application
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -46,9 +47,17 @@ class AdminModerationViewModel(application: Application) : AndroidViewModel(appl
 
     fun loginAsAdmin(email: String, password: String) {
         viewModelScope.launch {
+            Log.d(
+                TAG,
+                "[loginAsAdmin] Start. email='${email.trim()}' passwordLength=${password.length}",
+            )
             uiState = uiState.copy(isBusy = true, infoMessage = null)
             repository.signInAdmin(email.trim(), password)
                 .onSuccess {
+                    Log.d(
+                        TAG,
+                        "[loginAsAdmin] Success. currentUserEmail='${repository.currentUserEmail().orEmpty()}'",
+                    )
                     uiState = uiState.copy(
                         isBusy = false,
                         isAdminLoggedIn = true,
@@ -58,6 +67,11 @@ class AdminModerationViewModel(application: Application) : AndroidViewModel(appl
                     startPendingListener()
                 }
                 .onFailure {
+                    Log.e(
+                        TAG,
+                        "[loginAsAdmin] Failure. type=${it::class.java.simpleName} message='${it.message.orEmpty()}'",
+                        it,
+                    )
                     uiState = uiState.copy(
                         isBusy = false,
                         isAdminLoggedIn = false,
@@ -159,11 +173,12 @@ class AdminModerationViewModel(application: Application) : AndroidViewModel(appl
     private fun mapAdminLoginError(error: Throwable): String {
         val detail = error.message.orEmpty()
         return when {
-            detail.contains("No eres administrador", ignoreCase = true) -> {
-                "No se pudo iniciar sesion: No eres administrador"
-            }
             detail.contains("Falta ADMIN_EMAIL", ignoreCase = true) -> {
                 "No se pudo iniciar sesion: Falta configurar correo administrador"
+            }
+            detail.contains("No eres administrador", ignoreCase = true) ||
+                detail.contains("correo autenticado no coincide", ignoreCase = true) -> {
+                "No se pudo iniciar sesion: No eres administrador"
             }
             detail.contains("contrasena", ignoreCase = true) -> {
                 "No se pudo iniciar sesion: Ingresa la contrasena"
@@ -196,5 +211,9 @@ class AdminModerationViewModel(application: Application) : AndroidViewModel(appl
             }
             else -> "No se pudo iniciar sesion: ${error.message ?: "error"}"
         }
+    }
+
+    companion object {
+        private const val TAG = "AdminLogin"
     }
 }

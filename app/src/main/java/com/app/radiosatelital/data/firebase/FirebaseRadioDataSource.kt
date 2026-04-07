@@ -1,10 +1,14 @@
 package com.app.radiosatelital.data.firebase
 
 import android.content.Context
+import android.util.Log
 import com.app.radiosatelital.BuildConfig
 import com.app.radiosatelital.ui.UserRadioStation
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseAuthException
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
@@ -73,8 +77,19 @@ class FirebaseRadioDataSource(private val context: Context) {
             ?: return Result.failure(IllegalStateException("Firebase no esta configurado"))
         val adminEmail = adminConfiguredEmail()
         val normalizedInputEmail = normalizeEmail(email)
+        val projectId = FirebaseApp.getInstance().options.projectId.orEmpty()
+        val isAdminEmailEmpty = adminEmail.isBlank()
 
-        if (adminEmail.isBlank()) {
+        Log.d(
+            TAG,
+            "[signInAdmin][INPUT] inputEmail='${normalizedInputEmail}' passwordLength=${password.length} adminEmail='${adminEmail}' adminEmailEmpty=${isAdminEmailEmpty} projectId='${projectId}'",
+        )
+
+        if (isAdminEmailEmpty) {
+            Log.e(
+                TAG,
+                "${PRE_LOGIN_FAIL_ADMIN_EMAIL_EMPTY} ADMIN_EMAIL vacio. source=BuildConfig/local.properties/gradle/env",
+            )
             return Result.failure(
                 IllegalStateException(
                     "Falta ADMIN_EMAIL. Configuralo como propiedad Gradle local para habilitar acceso admin.",
@@ -82,20 +97,67 @@ class FirebaseRadioDataSource(private val context: Context) {
             )
         }
 
-        if (normalizedInputEmail != adminEmail) {
-            return Result.failure(
-                IllegalArgumentException("No eres administrador. Usa el correo de administrador")
-            )
-        }
-
         if (password.isBlank()) {
+            Log.e(TAG, "[signInAdmin][PRE_LOGIN_FAIL] Password vacio")
             return Result.failure(IllegalArgumentException("La contrasena es obligatoria"))
         }
 
+        Log.d(TAG, "[signInAdmin][DURING_LOGIN] Invocando signInWithEmailAndPassword")
         return runCatching {
             auth.signInWithEmailAndPassword(normalizedInputEmail, password).await()
             Unit
-        }
+        }.fold(
+            onSuccess = {
+                val currentEmail = normalizeEmail(auth.currentUser?.email)
+                val postValidationMatches = currentEmail == adminEmail
+                Log.d(
+                    TAG,
+                    "[signInAdmin][DURING_LOGIN_RESULT] success=true authenticatedEmail='${currentEmail}' adminEmail='${adminEmail}'",
+                )
+
+                if (!postValidationMatches) {
+                    Log.e(
+                        TAG,
+                        "${POST_LOGIN_ADMIN_EMAIL_MISMATCH} authenticatedEmail='${currentEmail}' adminEmail='${adminEmail}'",
+                    )
+                    auth.signOut()
+                    Result.failure(
+                        IllegalArgumentException(
+                            "No eres administrador. El correo autenticado no coincide con ADMIN_EMAIL",
+                        ),
+                    )
+                } else {
+                    Log.d(
+                        TAG,
+                        "${LOGIN_ADMIN_SUCCESS} authenticatedEmail='${currentEmail}' finalValidation=true",
+                    )
+                    Result.success(Unit)
+                }
+            },
+            onFailure = { throwable ->
+                val authException = throwable as? FirebaseAuthException
+                val errorCode = authException?.errorCode ?: "N/A"
+                val normalizedCode = errorCode.uppercase(Locale.ROOT)
+                val label = when {
+                    throwable is FirebaseAuthInvalidUserException ||
+                        normalizedCode == "ERROR_USER_NOT_FOUND" -> DURING_LOGIN_FIREBASE_USER_NOT_FOUND
+
+                    throwable is FirebaseAuthInvalidCredentialsException ||
+                        normalizedCode == "ERROR_WRONG_PASSWORD" ||
+                        normalizedCode == "ERROR_INVALID_CREDENTIAL" ||
+                        normalizedCode == "ERROR_INVALID_EMAIL" -> DURING_LOGIN_FIREBASE_INVALID_CREDENTIALS
+
+                    else -> DURING_LOGIN_FIREBASE_OTHER_ERROR
+                }
+
+                Log.e(
+                    TAG,
+                    "${label} type=${throwable::class.java.simpleName} errorCode='${errorCode}' message='${throwable.message.orEmpty()}'",
+                    throwable,
+                )
+                Result.failure(throwable)
+            },
+        )
     }
 
     suspend fun sendAdminPasswordReset(email: String): Result<Unit> {
@@ -258,6 +320,16 @@ class FirebaseRadioDataSource(private val context: Context) {
     private fun authOrNull(): FirebaseAuth? {
         if (!ensureFirebaseApp()) return null
         return runCatching { FirebaseAuth.getInstance() }.getOrNull()
+    }
+
+    companion object {
+        private const val TAG = "AdminLogin"
+        private const val PRE_LOGIN_FAIL_ADMIN_EMAIL_EMPTY = "PRE_LOGIN_FAIL_ADMIN_EMAIL_EMPTY"
+        private const val DURING_LOGIN_FIREBASE_USER_NOT_FOUND = "DURING_LOGIN_FIREBASE_USER_NOT_FOUND"
+        private const val DURING_LOGIN_FIREBASE_INVALID_CREDENTIALS = "DURING_LOGIN_FIREBASE_INVALID_CREDENTIALS"
+        private const val DURING_LOGIN_FIREBASE_OTHER_ERROR = "DURING_LOGIN_FIREBASE_OTHER_ERROR"
+        private const val POST_LOGIN_ADMIN_EMAIL_MISMATCH = "POST_LOGIN_ADMIN_EMAIL_MISMATCH"
+        private const val LOGIN_ADMIN_SUCCESS = "LOGIN_ADMIN_SUCCESS"
     }
 
     private fun firestoreOrNull(): FirebaseFirestore? {
