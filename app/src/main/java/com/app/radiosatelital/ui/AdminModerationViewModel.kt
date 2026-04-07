@@ -191,6 +191,13 @@ class AdminModerationViewModel(application: Application) : AndroidViewModel(appl
         }
     }
 
+    fun refreshAdminSessionState() {
+        uiState = uiState.copy(
+            isAdminLoggedIn = repository.isAdminSessionActive(),
+            currentUserEmail = repository.currentUserEmail(),
+        )
+    }
+
     private fun startPendingListener() {
         pendingListener?.remove()
         pendingListener = repository.observePendingRadios(

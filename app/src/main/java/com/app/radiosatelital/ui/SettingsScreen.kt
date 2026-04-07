@@ -39,6 +39,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,11 +48,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.app.radiosatelital.data.firebase.CloudRadioDocument
 import com.app.radiosatelital.ui.theme.AppThemeMode
 import kotlinx.coroutines.launch
@@ -75,6 +79,7 @@ fun SettingsScreen(
     val adminState = adminViewModel.uiState
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val lifecycleOwner = LocalLifecycleOwner.current
     var adminEmailInput by remember(adminState.adminEmail) { mutableStateOf(adminState.adminEmail) }
     var adminPasswordInput by remember { mutableStateOf("") }
     val trimmedAdminEmail = adminEmailInput.trim()
@@ -95,6 +100,18 @@ fun SettingsScreen(
         }
         if (!adminState.isAdminLoggedIn) {
             adminNavigationHandled = false
+        }
+    }
+
+    DisposableEffect(lifecycleOwner, adminViewModel) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                adminViewModel.refreshAdminSessionState()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
         }
     }
 

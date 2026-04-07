@@ -1,5 +1,6 @@
 package com.app.radiosatelital.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -42,6 +43,19 @@ fun AdminModerationScreen(
     val adminViewModel: AdminModerationViewModel = viewModel()
     val state = adminViewModel.uiState
     var editingRadio by remember { mutableStateOf<CloudRadioDocument?>(null) }
+    var showExitPrompt by remember { mutableStateOf(false) }
+
+    val requestExit: () -> Unit = {
+        if (state.isAdminLoggedIn) {
+            showExitPrompt = true
+        } else {
+            onBack()
+        }
+    }
+
+    BackHandler {
+        requestExit()
+    }
 
     Scaffold(
         topBar = {
@@ -54,18 +68,58 @@ fun AdminModerationScreen(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = requestExit) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Atrás")
                     }
                 },
                 actions = {
-                    TextButton(onClick = { adminViewModel.logoutAdmin() }, enabled = !state.isBusy) {
+                    TextButton(
+                        onClick = {
+                            adminViewModel.logoutAdmin()
+                            onBack()
+                        },
+                        enabled = !state.isBusy,
+                    ) {
                         Text("Cerrar sesión")
                     }
                 },
             )
         },
     ) { paddingValues ->
+
+    if (showExitPrompt) {
+        AlertDialog(
+            onDismissRequest = { showExitPrompt = false },
+            title = { Text("Salir de administrador") },
+            text = { Text("¿Quieres dejar iniciada tu sesión de administrador?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showExitPrompt = false
+                        onBack()
+                    },
+                ) {
+                    Text("Sí, dejar iniciada")
+                }
+            },
+            dismissButton = {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(
+                        onClick = {
+                            showExitPrompt = false
+                            adminViewModel.logoutAdmin()
+                            onBack()
+                        },
+                    ) {
+                        Text("Cerrar sesión y salir")
+                    }
+                    TextButton(onClick = { showExitPrompt = false }) {
+                        Text("Cancelar")
+                    }
+                }
+            },
+        )
+    }
         Column(
             modifier = Modifier
                 .fillMaxSize()
