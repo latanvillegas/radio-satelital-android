@@ -26,9 +26,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.app.radiosatelital.RadioStation
 import com.app.radiosatelital.ui.RadioCardSizeMode
 import com.app.radiosatelital.ui.locationLabel
@@ -75,12 +77,23 @@ fun RadioListItem(
                     .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    imageVector = Icons.Filled.Radio,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(sizing.logoIconSize),
-                )
+                if (!station.logoUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = station.logoUrl,
+                        contentDescription = "${station.name} logo",
+                        modifier = Modifier
+                            .size(sizing.logoContainerSize)
+                            .clip(CircleShape),
+                        contentScale = ContentScale.Crop,
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Filled.Radio,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(sizing.logoIconSize),
+                    )
+                }
             }
 
             Column(modifier = Modifier.weight(1f)) {
@@ -98,13 +111,15 @@ fun RadioListItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Text(
-                    text = "${liveListeners.coerceAtLeast(0)} escuchando",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                if (liveListeners > 0) {
+                    Text(
+                        text = "${liveListeners.coerceAtLeast(0)} escuchando",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
 
             if (showFavoriteAction) {

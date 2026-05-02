@@ -312,6 +312,7 @@ private fun HomeRootScreen(
                             onPrevious = coordinator::previous,
                             onPlayPause = coordinator::togglePlayback,
                             onNext = coordinator::next,
+                            onShare = { shareStation(context, station) },
                         )
                     }
                     BottomNavigationBar(
@@ -457,4 +458,22 @@ private fun shareApp(context: android.content.Context) {
         putExtra(Intent.EXTRA_TEXT, shareText)
     }
     context.startActivity(Intent.createChooser(shareIntent, "Compartir app"))
+}
+
+private fun shareStation(context: android.content.Context, station: com.app.radiosatelital.RadioStation) {
+    val shareText = buildString {
+        append("Escucha ")
+        append(station.name)
+        append(" en vivo con Radio Satelital")
+        append("\n\n")
+        append("App: Radio Satelital")
+        append("\n")
+        append("https://play.google.com/store/apps/details?id=")
+        append(context.packageName)
+    }
+    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+        type = "text/plain"
+        putExtra(Intent.EXTRA_TEXT, shareText)
+    }
+    context.startActivity(Intent.createChooser(shareIntent, "Compartir radio"))
 }
