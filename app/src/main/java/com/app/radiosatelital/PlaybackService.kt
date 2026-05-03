@@ -186,12 +186,15 @@ class PlaybackService : MediaSessionService() {
                             )
                             val retried = maybeAutoRetry(error)
                             if (!retried) {
-                                mainHandler.post {
-                                    android.widget.Toast.makeText(
-                                        applicationContext,
-                                        "Fallo de radio: ${error.errorCodeName}",
-                                        android.widget.Toast.LENGTH_LONG,
-                                    ).show()
+                                val movedToNext = maybeSwitchToNextStation()
+                                if (!movedToNext) {
+                                    mainHandler.post {
+                                        android.widget.Toast.makeText(
+                                            applicationContext,
+                                            "Fallo de radio: ${error.errorCodeName}",
+                                            android.widget.Toast.LENGTH_LONG,
+                                        ).show()
+                                    }
                                 }
                             }
                         }
@@ -281,6 +284,21 @@ class PlaybackService : MediaSessionService() {
             },
             delayMs,
         )
+        return true
+    }
+
+    private fun maybeSwitchToNextStation(): Boolean {
+        if (player.mediaItemCount <= 1) return false
+
+        val currentIndex = player.currentMediaItemIndex
+        if (currentIndex == C.INDEX_UNSET) return false
+
+        Log.w(TAG_SERVICE, "auto-switch: cambiando a la siguiente radio por fallo de stream")
+        mainHandler.post {
+            player.seekToNextMediaItem()
+            player.prepare()
+            player.play()
+        }
         return true
     }
 

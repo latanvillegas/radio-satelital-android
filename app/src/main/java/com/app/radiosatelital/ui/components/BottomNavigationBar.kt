@@ -11,6 +11,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import com.app.radiosatelital.ui.HomeTab
 
 @Composable
@@ -23,12 +24,27 @@ fun BottomNavigationBar(currentTab: HomeTab, onTabSelected: (HomeTab) -> Unit) {
                 HomeTab.Country -> Icons.Filled.Public
                 HomeTab.Mine -> Icons.Filled.Tune
             }
+            val tintColor = when (tab) {
+                HomeTab.Music -> Color(0xFF1E88E5)
+                HomeTab.Favorites -> Color(0xFFFDD835)
+                HomeTab.Country -> Color(0xFF43A047)
+                HomeTab.Mine -> Color(0xFFFB8C00)
+            }
             NavigationBarItem(
                 selected = currentTab == tab,
                 onClick = { onTabSelected(tab) },
-                icon = { Icon(icon, contentDescription = tab.label) },
+                icon = {
+                    Icon(
+                        icon,
+                        contentDescription = tab.label,
+                        tint = tintColor
+                    )
+                },
                 label = { Text(tab.label) },
-                colors = NavigationBarItemDefaults.colors(),
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = Color.Unspecified,
+                    unselectedIconColor = Color.Unspecified
+                ),
             )
         }
     }

@@ -39,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
@@ -65,10 +66,12 @@ fun MainScreen(
     layoutMode: RadioLayoutMode,
     cardSizeMode: RadioCardSizeMode,
     animationsEnabled: Boolean,
+    statusBarVisible: Boolean,
     onThemeChange: (AppThemeMode) -> Unit,
     onLayoutModeChange: (RadioLayoutMode) -> Unit,
     onCardSizeModeChange: (RadioCardSizeMode) -> Unit,
     onAnimationsEnabledChange: (Boolean) -> Unit,
+    onStatusBarVisibleChange: (Boolean) -> Unit,
     onResetAppearance: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -134,10 +137,12 @@ fun MainScreen(
                 layoutMode = layoutMode,
                 cardSizeMode = cardSizeMode,
                 animationsEnabled = animationsEnabled,
+                statusBarVisible = statusBarVisible,
                 onThemeChange = onThemeChange,
                 onLayoutModeChange = onLayoutModeChange,
                 onCardSizeModeChange = onCardSizeModeChange,
                 onAnimationsEnabledChange = onAnimationsEnabledChange,
+                onStatusBarVisibleChange = onStatusBarVisibleChange,
                 onResetAppearance = onResetAppearance,
                 onOpenAdminModeration = {
                     navController.navigate(AppRoutes.ADMIN_MODERATION) {
@@ -283,18 +288,18 @@ private fun HomeRootScreen(
                     },
                     navigationIcon = {
                         IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(Icons.Filled.Menu, contentDescription = "Menu")
+                            Icon(Icons.Filled.Menu, contentDescription = "Menu", tint = Color(0xFF1E88E5))
                         }
                     },
                     actions = {
                         IconButton(onClick = { navController.navigate(AppRoutes.SEARCH) }) {
-                            Icon(Icons.Filled.Search, contentDescription = "Buscar")
+                            Icon(Icons.Filled.Search, contentDescription = "Buscar", tint = Color(0xFF1E88E5))
                         }
                         IconButton(onClick = { coordinator.setTab(HomeTab.Favorites) }) {
-                            Icon(Icons.Filled.Favorite, contentDescription = "Favoritos")
+                            Icon(Icons.Filled.Favorite, contentDescription = "Favoritos", tint = Color(0xFFE53935))
                         }
                         IconButton(onClick = { navController.navigate(AppRoutes.SETTINGS) }) {
-                            Icon(Icons.Filled.Settings, contentDescription = "Ajustes")
+                            Icon(Icons.Filled.Settings, contentDescription = "Ajustes", tint = Color(0xFF546E7A))
                         }
                     },
                     scrollBehavior = topBarScrollBehavior,

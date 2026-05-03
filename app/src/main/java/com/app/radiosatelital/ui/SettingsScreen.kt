@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -67,10 +68,12 @@ fun SettingsScreen(
     layoutMode: RadioLayoutMode,
     cardSizeMode: RadioCardSizeMode,
     animationsEnabled: Boolean,
+    statusBarVisible: Boolean,
     onThemeChange: (AppThemeMode) -> Unit,
     onLayoutModeChange: (RadioLayoutMode) -> Unit,
     onCardSizeModeChange: (RadioCardSizeMode) -> Unit,
     onAnimationsEnabledChange: (Boolean) -> Unit,
+    onStatusBarVisibleChange: (Boolean) -> Unit,
     onResetAppearance: () -> Unit,
     onOpenAdminModeration: () -> Unit,
     onBack: () -> Unit,
@@ -380,6 +383,36 @@ fun SettingsScreen(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+            }
+
+            SettingsSectionCard(
+                title = "Pantalla",
+                subtitle = "Controla la visibilidad de la barra de estado",
+            ) {
+                Column {
+                    Text(
+                        text = "Barra de estado",
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        FilterChip(
+                            selected = statusBarVisible,
+                            onClick = { onStatusBarVisibleChange(true) },
+                            label = { Text("Mostrar") },
+                        )
+                        FilterChip(
+                            selected = !statusBarVisible,
+                            onClick = { onStatusBarVisibleChange(false) },
+                            label = { Text("Ocultar") },
+                        )
+                    }
+                }
             }
 
             if (!adminState.infoMessage.isNullOrBlank()) {
