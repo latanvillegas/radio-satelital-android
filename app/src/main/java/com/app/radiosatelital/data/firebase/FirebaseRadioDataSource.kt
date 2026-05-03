@@ -387,7 +387,7 @@ class FirebaseRadioDataSource(private val context: Context) {
         }
     }
 
-    suspend fun testStreamAvailability(streamUrl: String): Result<Unit> {
+    suspend fun testStreamAvailability(streamUrl: String): Boolean {
         val normalizedStream = streamUrl.trim()
         if (normalizedStream.isBlank()) {
             return false
@@ -440,7 +440,8 @@ class FirebaseRadioDataSource(private val context: Context) {
     }
 
     suspend fun getPublicRadios(): List<CloudRadioDocument> {
-        val snapshot = firestore.collection("public_radios").get().await()
+        val db = firestoreOrNull() ?: return emptyList()
+        val snapshot = db.collection("public_radios").get().await()
         return snapshot.documents.mapNotNull {
             it.toObject(CloudRadioDocument::class.java)?.copy(id = it.id)
         }
@@ -451,7 +452,8 @@ class FirebaseRadioDataSource(private val context: Context) {
         field: String,
         value: String
     ) {
-        firestore.collection("public_radios")
+        val db = firestoreOrNull() ?: return
+        db.collection("public_radios")
             .document(radioId)
             .update(field, value)
             .await()
