@@ -108,4 +108,5 @@ dependencies {
 
 	debugImplementation("androidx.compose.ui:ui-tooling")
 	debugImplementation("androidx.compose.ui:ui-test-manifest")
+	debugImplementation("com.squareup.leakcanary:leakcanary-android:2.12")
 }
