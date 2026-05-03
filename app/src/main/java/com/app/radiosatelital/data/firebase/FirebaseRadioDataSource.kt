@@ -390,11 +390,11 @@ class FirebaseRadioDataSource(private val context: Context) {
     suspend fun testStreamAvailability(streamUrl: String): Result<Unit> {
         val normalizedStream = streamUrl.trim()
         if (normalizedStream.isBlank()) {
-            return Result.failure(IllegalArgumentException("Ingresa un stream valido"))
+            return false
         }
 
         return withContext(Dispatchers.IO) {
-            runCatching {
+            try {
                 val connection = (URL(normalizedStream).openConnection() as HttpURLConnection).apply {
                     requestMethod = "GET"
                     instanceFollowRedirects = true
@@ -406,7 +406,7 @@ class FirebaseRadioDataSource(private val context: Context) {
                     connection.connect()
                     val responseCode = connection.responseCode
                     if (responseCode !in 200..399) {
-                        throw IllegalStateException("Stream no disponible. HTTP $responseCode")
+                        return@withContext false
                     }
 
                     val contentType = connection.contentType.orEmpty().lowercase(Locale.ROOT)
@@ -423,19 +423,38 @@ class FirebaseRadioDataSource(private val context: Context) {
                     }.getOrDefault(-1)
 
                     if (bytesRead <= 0) {
-                        throw IllegalStateException("Stream responde pero no entrega audio")
+                        return@withContext false
                     }
 
                     if (!looksLikeAudio && bytesRead < 16) {
-                        throw IllegalStateException(
-                            "Stream responde pero no parece audio. contentType=${contentType.ifBlank { "desconocido" }}",
-                        )
+                        return@withContext false
                     }
                 } finally {
                     connection.disconnect()
                 }
+                true
+            } catch (e: Exception) {
+                false
             }
         }
+    }
+
+    suspend fun getPublicRadios(): List<CloudRadioDocument> {
+        val snapshot = firestore.collection("public_radios").get().await()
+        return snapshot.documents.mapNotNull {
+            it.toObject(CloudRadioDocument::class.java)?.copy(id = it.id)
+        }
+    }
+
+    suspend fun updatePublicRadioField(
+        radioId: String,
+        field: String,
+        value: String
+    ) {
+        firestore.collection("public_radios")
+            .document(radioId)
+            .update(field, value)
+            .await()
     }
 
     suspend fun rejectSubmittedRadio(radioId: String): Result<Unit> {

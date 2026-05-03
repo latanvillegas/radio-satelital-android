@@ -1,6 +1,7 @@
 package com.app.radiosatelital.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,6 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -72,26 +75,44 @@ fun RadioListItem(
         ) {
             Box(
                 modifier = Modifier
-                    .size(sizing.logoContainerSize)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.primary,
+                                MaterialTheme.colorScheme.tertiary
+                            )
+                        )
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
                 if (!station.logoUrl.isNullOrBlank()) {
-                    AsyncImage(
-                        model = station.logoUrl,
-                        contentDescription = "${station.name} logo",
+                    Box(
                         modifier = Modifier
-                            .size(sizing.logoContainerSize)
-                            .clip(CircleShape),
-                        contentScale = ContentScale.Crop,
-                    )
+                            .size(48.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.outlineVariant,
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                    ) {
+                        AsyncImage(
+                            model = station.logoUrl,
+                            contentDescription = "${station.name} logo",
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(RoundedCornerShape(12.dp)),
+                            contentScale = ContentScale.Crop,
+                        )
+                    }
                 } else {
                     Icon(
                         imageVector = Icons.Filled.Radio,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(sizing.logoIconSize),
+                        tint = Color.White,
+                        modifier = Modifier.size(28.dp),
                     )
                 }
             }

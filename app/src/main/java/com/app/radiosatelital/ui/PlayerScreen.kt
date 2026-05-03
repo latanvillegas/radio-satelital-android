@@ -38,6 +38,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
@@ -59,6 +61,7 @@ fun PlayerScreen(
     val backgroundColor = MaterialTheme.colorScheme.background
     val contentColor = MaterialTheme.colorScheme.onBackground
     val accentColor = MaterialTheme.colorScheme.primary
+    val isPlaying = uiState.playbackState is RadioPlaybackState.Playing
     val isLoading = uiState.playbackState is RadioPlaybackState.Loading
     val isError = uiState.playbackState is RadioPlaybackState.Error
     val statusLabel = when (uiState.playbackState) {
@@ -77,9 +80,18 @@ fun PlayerScreen(
         stationChangeMessage = null
     }
 
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = backgroundColor,
+    val gradientColors = listOf(
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+        MaterialTheme.colorScheme.background,
+        MaterialTheme.colorScheme.surface
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                brush = Brush.verticalGradient(colors = gradientColors)
+            )
     ) {
         Column(
             modifier = Modifier
@@ -110,20 +122,40 @@ fun PlayerScreen(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 Box(
-                    modifier = Modifier
-                        .size(220.dp)
-                        .clip(CircleShape)
-                        .background(accentColor.copy(alpha = 0.22f)),
                     contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .size(240.dp)
+                        .shadow(
+                            elevation = 24.dp,
+                            shape = CircleShape,
+                            ambientColor = MaterialTheme.colorScheme.primary,
+                            spotColor = MaterialTheme.colorScheme.primary
+                        )
+                        .clip(CircleShape)
+                        .background(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.primary,
+                                    MaterialTheme.colorScheme.primaryContainer
+                                )
+                            )
+                        )
                 ) {
                     Box(
-                        modifier = Modifier
-                            .size(170.dp)
-                            .clip(CircleShape)
-                            .background(accentColor.copy(alpha = 0.18f)),
                         contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(180.dp)
+                            .clip(CircleShape)
+                            .background(
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+                            )
                     ) {
-                        Icon(Icons.Filled.Radio, contentDescription = null, tint = contentColor, modifier = Modifier.size(90.dp))
+                        Icon(
+                            imageVector = Icons.Filled.Radio,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(90.dp)
+                        )
                     }
                 }
                 Text(
@@ -209,31 +241,47 @@ fun PlayerScreen(
 
             Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    IconButton(onClick = onPrevious, enabled = !isLoading) {
-                        Icon(Icons.Filled.SkipPrevious, contentDescription = "Radio anterior", tint = contentColor)
+                    IconButton(
+                        onClick = onPrevious,
+                        modifier = Modifier
+                            .size(52.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Icon(Icons.Filled.SkipPrevious, null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(28.dp))
                     }
-                    IconButton(onClick = onPlayPause, modifier = Modifier.size(74.dp)) {
+                    Spacer(Modifier.width(24.dp))
+                    IconButton(
+                        onClick = onPlayPause,
+                        modifier = Modifier
+                            .size(72.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary)
+                    ) {
                         Icon(
-                            if (uiState.playbackState is RadioPlaybackState.Playing) {
-                                Icons.Filled.PauseCircle
-                            } else {
-                                Icons.Filled.PlayCircle
-                            },
-                            contentDescription = if (uiState.playbackState is RadioPlaybackState.Playing) {
-                                "Pausar reproducción"
-                            } else {
-                                "Reanudar reproducción"
-                            },
-                            tint = contentColor,
-                            modifier = Modifier.size(62.dp),
+                            imageVector = if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayCircle,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(40.dp)
                         )
                     }
-                    IconButton(onClick = onNext, enabled = !isLoading) {
-                        Icon(Icons.Filled.SkipNext, contentDescription = "Radio siguiente", tint = contentColor)
+                    Spacer(Modifier.width(24.dp))
+                    IconButton(
+                        onClick = onNext,
+                        modifier = Modifier
+                            .size(52.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                    ) {
+                        Icon(Icons.Filled.SkipNext, null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(28.dp))
                     }
                 }
 

@@ -12,6 +12,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -20,6 +26,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.animation.AnimatedVisibility
+import coil.compose.AsyncImage
+import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -163,6 +176,55 @@ fun AdminModerationScreen(
                         )
                     }
                 }
+                // Public radios section (working / broken)
+                val tabTitles = listOf("✅ Funcionando", "⚠️ Caídas")
+                var selectedTab by remember { mutableStateOf(0) }
+
+                LaunchedEffect(Unit) {
+                    adminViewModel.loadPublicRadios()
+                }
+
+                val workingRadios = adminViewModel.publicRadios.filter {
+                    it.lastStreamStatus != false
+                }
+                val brokenRadios = adminViewModel.publicRadios.filter {
+                    it.lastStreamStatus == false
+                }
+
+                TabRow(selectedTabIndex = selectedTab) {
+                    tabTitles.forEachIndexed { index, title ->
+                        Tab(
+                            selected = selectedTab == index,
+                            onClick = { selectedTab = index },
+                            text = { Text(title) }
+                        )
+                    }
+                }
+
+                when (selectedTab) {
+                    0 -> PublicRadioList(
+                        radios = workingRadios,
+                        onEditLogo = { radio, newLogoUrl ->
+                            adminViewModel.updatePublicRadioLogo(radio.id, newLogoUrl)
+                        },
+                        onTestStream = { url, onResult ->
+                            adminViewModel.testPublicRadioStream(url, onResult)
+                        },
+                        onEditStream = null
+                    )
+                    1 -> PublicRadioList(
+                        radios = brokenRadios,
+                        onEditLogo = { radio, newLogoUrl ->
+                            adminViewModel.updatePublicRadioLogo(radio.id, newLogoUrl)
+                        },
+                        onTestStream = { url, onResult ->
+                            adminViewModel.testPublicRadioStream(url, onResult)
+                        },
+                        onEditStream = { radio, newStreamUrl ->
+                            adminViewModel.updatePublicRadioStream(radio.id, newStreamUrl)
+                        }
+                    )
+                }
             }
 
             if (!state.infoMessage.isNullOrBlank()) {
@@ -195,6 +257,183 @@ fun AdminModerationScreen(
     }
 }
 
+ @Composable
+ private fun PublicRadioList(
+     radios: List<com.app.radiosatelital.data.firebase.CloudRadioDocument>,
+     onEditLogo: (com.app.radiosatelital.data.firebase.CloudRadioDocument, String) -> Unit,
+     onTestStream: (String, (Boolean) -> Unit) -> Unit,
+     onEditStream: ((com.app.radiosatelital.data.firebase.CloudRadioDocument, String) -> Unit)?
+) {
+     var expandedRadioId by remember { mutableStateOf<String?>(null) }
+     var logoInput by remember { mutableStateOf("") }
+     var streamInput by remember { mutableStateOf("") }
+     var streamTestResult by remember { mutableStateOf<Boolean?>(null) }
+
+     LazyColumn {
+         items(radios, key = { it.id }) { radio ->
+             androidx.compose.material3.Card(
+                 modifier = Modifier
+                     .fillMaxWidth()
+                     .padding(horizontal = 16.dp, vertical = 4.dp)
+                     .clickable {
+                         expandedRadioId = if (expandedRadioId == radio.id)
+                             null else radio.id
+                         logoInput = radio.logoUrl ?: ""
+                         streamInput = radio.streamUrl ?: ""
+                         streamTestResult = null
+                     },
+                 shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+             ) {
+                 Column(modifier = Modifier.padding(12.dp)) {
+                     Row(
+                         verticalAlignment = Alignment.CenterVertically,
+                         horizontalArrangement = Arrangement.spacedBy(12.dp)
+                     ) {
+                         Box(
+                             modifier = Modifier
+                                 .size(48.dp)
+                                 .clip(RoundedCornerShape(8.dp))
+                                 .background(MaterialTheme.colorScheme.surfaceVariant)
+                         ) {
+                             if (!radio.logoUrl.isNullOrBlank()) {
+                                 AsyncImage(
+                                     model = radio.logoUrl,
+                                     contentDescription = null,
+                                     contentScale = ContentScale.Crop,
+                                     modifier = Modifier.fillMaxSize()
+                                 )
+                             } else {
+                                 Icon(
+                                     Icons.Filled.Radio,
+                                     contentDescription = null,
+                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                     modifier = Modifier
+                                         .size(28.dp)
+                                         .align(Alignment.Center)
+                                 )
+                             }
+                         }
+                         Column(modifier = Modifier.weight(1f)) {
+                             Text(
+                                 text = radio.name ?: "Sin nombre",
+                                 style = MaterialTheme.typography.bodyLarge,
+                                 fontWeight = FontWeight.SemiBold,
+                                 maxLines = 1,
+                                 overflow = TextOverflow.Ellipsis
+                             )
+                             Text(
+                                 text = radio.country ?: "",
+                                 style = MaterialTheme.typography.bodySmall,
+                                 color = MaterialTheme.colorScheme.onSurfaceVariant
+                             )
+                         }
+                         Icon(
+                             imageVector = if (expandedRadioId == radio.id)
+                                 Icons.Filled.ExpandLess
+                             else Icons.Filled.ExpandMore,
+                             contentDescription = null
+                         )
+                     }
+
+                     AnimatedVisibility(visible = expandedRadioId == radio.id) {
+                         Column(
+                             modifier = Modifier.padding(top = 12.dp),
+                             verticalArrangement = Arrangement.spacedBy(8.dp)
+                         ) {
+                             Text("Logo URL",
+                                 style = MaterialTheme.typography.labelMedium)
+                             OutlinedTextField(
+                                 value = logoInput,
+                                 onValueChange = { logoInput = it },
+                                 modifier = Modifier.fillMaxWidth(),
+                                 placeholder = { Text("https://...") },
+                                 singleLine = true,
+                                 trailingIcon = {
+                                     IconButton(onClick = {
+                                         onEditLogo(radio, logoInput)
+                                     }) {
+                                         Icon(Icons.Filled.Save,
+                                             contentDescription = "Guardar logo")
+                                     }
+                                 }
+                             )
+
+                             if (onEditStream != null) {
+                                 Text("Stream URL",
+                                     style = MaterialTheme.typography.labelMedium)
+                                 OutlinedTextField(
+                                     value = streamInput,
+                                     onValueChange = { streamInput = it },
+                                     modifier = Modifier.fillMaxWidth(),
+                                     placeholder = { Text("https://...") },
+                                     singleLine = true
+                                 )
+                                 Row(
+                                     horizontalArrangement =
+                                         Arrangement.spacedBy(8.dp)
+                                 ) {
+                                     OutlinedButton(
+                                         onClick = {
+                                             streamTestResult = null
+                                             onTestStream(streamInput) {
+                                                 streamTestResult = it
+                                             }
+                                         },
+                                         modifier = Modifier.weight(1f)
+                                     ) {
+                                         Icon(Icons.Filled.PlayCircle, null,
+                                             modifier = Modifier.size(18.dp))
+                                         Spacer(Modifier.width(4.dp))
+                                         Text("Probar")
+                                     }
+                                     Button(
+                                         onClick = {
+                                             onEditStream(radio, streamInput)
+                                         },
+                                         modifier = Modifier.weight(1f),
+                                         enabled = streamTestResult == true
+                                     ) {
+                                         Icon(Icons.Filled.Save, null,
+                                             modifier = Modifier.size(18.dp))
+                                         Spacer(Modifier.width(4.dp))
+                                         Text("Guardar")
+                                     }
+                                 }
+                                 streamTestResult?.let { isOk ->
+                                     Row(
+                                         verticalAlignment =
+                                             Alignment.CenterVertically,
+                                         horizontalArrangement =
+                                             Arrangement.spacedBy(4.dp)
+                                     ) {
+                                         Icon(
+                                             imageVector = if (isOk)
+                                                 Icons.Filled.CheckCircle
+                                             else Icons.Filled.Cancel,
+                                             contentDescription = null,
+                                             tint = if (isOk) Color(0xFF43A047)
+                                                    else Color(0xFFE53935),
+                                             modifier = Modifier.size(18.dp)
+                                         )
+                                         Text(
+                                             text = if (isOk)
+                                                 "Stream activo ✅"
+                                             else "Stream caído ❌",
+                                             color = if (isOk) Color(0xFF43A047)
+                                                     else Color(0xFFE53935),
+                                             style =
+                                                 MaterialTheme.typography.bodySmall
+                                         )
+                                     }
+                                 }
+                             }
+                         }
+                     }
+                 }
+             }
+         }
+     }
+ }
 @Composable
 private fun PendingRadioModerationItem(
     radio: CloudRadioDocument,

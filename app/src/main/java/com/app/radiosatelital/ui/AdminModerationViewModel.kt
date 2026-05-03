@@ -176,16 +176,18 @@ class AdminModerationViewModel(application: Application) : AndroidViewModel(appl
     fun testStream(streamUrl: String) {
         viewModelScope.launch {
             uiState = uiState.copy(isBusy = true, infoMessage = null)
-            repository.testStreamAvailability(streamUrl)
-                .onSuccess {
-                    uiState = uiState.copy(isBusy = false, infoMessage = "Stream disponible")
-                }
-                .onFailure {
-                    uiState = uiState.copy(
-                        isBusy = false,
-                        infoMessage = "Stream no disponible: ${it.message ?: "error"}",
-                    )
-                }
+            try {
+                val ok = repository.testStreamAvailability(streamUrl)
+                uiState = uiState.copy(
+                    isBusy = false,
+                    infoMessage = if (ok) "Stream disponible" else "Stream no disponible",
+                )
+            } catch (e: Exception) {
+                uiState = uiState.copy(
+                    isBusy = false,
+                    infoMessage = "Stream no disponible: ${e.message ?: "error"}",
+                )
+            }
         }
     }
 
@@ -224,6 +226,50 @@ class AdminModerationViewModel(application: Application) : AndroidViewModel(appl
         pendingListener?.remove()
         pendingListener = null
         super.onCleared()
+    }
+
+    var publicRadios by mutableStateOf<List<com.app.radiosatelital.data.firebase.CloudRadioDocument>>(emptyList())
+        private set
+    var isLoadingPublicRadios by mutableStateOf(false)
+        private set
+
+    fun loadPublicRadios() {
+        isLoadingPublicRadios = true
+        viewModelScope.launch {
+            try {
+                val result = repository.getPublicRadios()
+                publicRadios = result
+            } catch (e: Exception) {
+                // mantener lista vacía en error
+            } finally {
+                isLoadingPublicRadios = false
+            }
+        }
+    }
+
+    fun updatePublicRadioLogo(radioId: String, newLogoUrl: String) {
+        viewModelScope.launch {
+            try {
+                repository.updatePublicRadioLogo(radioId, newLogoUrl)
+                loadPublicRadios()
+            } catch (e: Exception) { }
+        }
+    }
+
+    fun testPublicRadioStream(url: String, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val isAvailable = repository.testStreamAvailability(url)
+            onResult(isAvailable)
+        }
+    }
+
+    fun updatePublicRadioStream(radioId: String, newStreamUrl: String) {
+        viewModelScope.launch {
+            try {
+                repository.updatePublicRadioStreamUrl(radioId, newStreamUrl)
+                loadPublicRadios()
+            } catch (e: Exception) { }
+        }
     }
 
     private fun mapAdminLoginError(error: Throwable): String {

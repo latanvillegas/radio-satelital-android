@@ -86,7 +86,17 @@ class RadioRepository(context: Context) {
         return dataSource.updateSubmittedRadio(radio)
     }
 
-    suspend fun testStreamAvailability(streamUrl: String): Result<Unit> {
-        return dataSource.testStreamAvailability(streamUrl)
-    }
+    
+
+    suspend fun getPublicRadios(): List<CloudRadioDocument> =
+        dataSource.getPublicRadios()
+
+    suspend fun updatePublicRadioLogo(radioId: String, logoUrl: String) =
+        dataSource.updatePublicRadioField(radioId, "logoUrl", logoUrl)
+
+    suspend fun updatePublicRadioStreamUrl(radioId: String, streamUrl: String) =
+        dataSource.updatePublicRadioField(radioId, "streamUrl", streamUrl)
+
+    suspend fun testStreamAvailability(url: String): Boolean =
+        dataSource.testStreamAvailability(url)
 }

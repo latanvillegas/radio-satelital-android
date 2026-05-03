@@ -22,6 +22,7 @@ data class CloudRadioDocument(
     val homepageUrl: String?,
     val createdBy: String,
     val status: String,
+    val lastStreamStatus: Boolean? = null,
 )
 
 fun CloudRadioDocument.toRadioStation(): RadioStation {
@@ -55,6 +56,7 @@ fun DocumentSnapshot.toCloudRadioDocumentOrNull(): CloudRadioDocument? {
     val homepageUrl = getString("homepage") ?: getString("homepageUrl")
     val createdBy = getString("createdBy") ?: ""
     val status = getString("status") ?: STATUS_PENDING
+    val lastStreamStatus = if (contains("lastStreamStatus")) getBoolean("lastStreamStatus") else null
 
     return CloudRadioDocument(
         id = id,
@@ -71,5 +73,6 @@ fun DocumentSnapshot.toCloudRadioDocumentOrNull(): CloudRadioDocument? {
         homepageUrl = homepageUrl,
         createdBy = createdBy,
         status = status,
+        lastStreamStatus = lastStreamStatus,
     )
 }
